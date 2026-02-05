@@ -1,0 +1,5 @@
+metric,value
+total_videos,15
+predicted_fake,13
+false_positive_rate,0.8667
+average_prob_fake,0.6358

@@ -1,0 +1,96 @@
+# FF++ C23 Baseline CNN (MobileNetV2) Experiment Config
+# Author: Giulio Dajani
+# Project: VerifAI
+# How to run:
+#   python pipelines/splits/make_splits.py
+#   python pipelines/video/extract_frames.py
+#   python ml/train.py
+#   python ml/evaluate.py
+
+experiment:
+  name: ffpp_c23_mobilenet_baseline
+  task: deepfake_detection_binary
+  description: >
+    Frame-based baseline CNN trained on FaceForensics++ C23 using uniform frame sampling.
+    Video-level prediction is obtained by averaging per-frame sigmoid probabilities.
+
+dataset:
+  name: FaceForensics++_C23
+  raw_root: data/raw/FaceForensics++_C23
+  frames_root: data/interim/frames/FaceForensics++_C23
+  splits_dir: data/splits
+  split_files:
+    train: data/splits/train.csv
+    val: data/splits/val.csv
+    test: data/splits/test.csv
+
+preprocessing:
+  frames_per_video: 5
+  sampling_strategy: uniform
+  image_size: [224, 224]
+  normalization:
+    mean: [0.485, 0.456, 0.406]
+    std:  [0.229, 0.224, 0.225]
+  augmentations:
+    train:
+      random_horizontal_flip: true
+    val_test:
+      random_horizontal_flip: false
+
+labels:
+  mapping:
+    real: 0
+    fake: 1
+  note: original folder = real; manipulation folders = fake
+
+model:
+  architecture: mobilenet_v2
+  pretrained: imagenet
+  head:
+    type: linear
+    output_dim: 1
+  output: logit_per_frame
+
+training:
+  device: auto   # auto selects cuda if available otherwise CPU
+  epochs: 5
+  batch_size:
+    train: 32
+    val: 64
+  optimizer:
+    name: adamw
+    lr: 0.0001
+    weight_decay: 0.01
+  loss:
+    name: bce_with_logits
+  seed: 42
+  num_workers: 2
+  checkpointing:
+    save_best_by: val_loss
+    output_dir: experiments/results/ffpp_c23_mobilenet_baseline
+    best_model_path: experiments/results/ffpp_c23_mobilenet_baseline/best_model.pt
+
+evaluation:
+  level: video
+  aggregation:
+    method: mean
+    rule: >
+      For each frame, compute probability = sigmoid(logit).
+      For each video, compute mean probability over its frames.
+      Predict fake if mean probability >= 0.5.
+  metrics:
+    - accuracy
+    - roc_auc
+    - confusion_matrix
+    - classification_report
+  report_path: experiments/results/ffpp_c23_mobilenet_baseline/test_report.txt
+
+notes:
+  limitations: >
+    Baseline uses only RGB frames (no temporal model, no face alignment, no audio, no metadata).
+    Class imbalance may bias predictions toward the majority class.
+  results_summary:
+    test_videos: 712
+    accuracy: 0.7374
+    auc: 0.5303
+    confusion_matrix: [[18, 146], [41, 507]]

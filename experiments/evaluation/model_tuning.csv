@@ -1,0 +1,7 @@
+run_id,n_frames,mfcc_max_len,threshold,output_label,prob_fake,notes
+A,3,default,0.5,real,0.0,n_frames=3 (speed-focused); same test video used for controlled comparison
+B,5,default,0.5,real,0.0,baseline n_frames=5; same test video used for controlled comparison
+C,7,default,0.5,real,0.0,n_frames=7 (more temporal coverage); same test video used for controlled comparison
+D,5,default,0.5,real,1.10427412363941e-18,Video2 baseline; different clip (00109_12) used to confirm tuning generalises beyond one file
+E,3,default,0.5,real,7.619786177564181e-19,Video2 test; n_frames=3 vs baseline shows small probability shift while label remains stable
+F,7,default,0.5,real,2.771730755215522e-19,Video2 test; n_frames=7 vs baseline shows further probability shift with stable label

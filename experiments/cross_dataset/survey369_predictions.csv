@@ -1,0 +1,16 @@
+video_id,video_path,prob_fake,predicted_label
+S001,data/raw/Survey369/videos\21_16_Luigi.mp4,0.7119925618171692,fake
+S002,data/raw/Survey369/videos\2_16_Viktor.mov,0.4407922625541687,real
+S003,data/raw/Survey369/videos\33_16_Beppe.mp4,0.5938910841941833,fake
+S004,data/raw/Survey369/videos\35_16_Boa.mp4,0.947016179561615,fake
+S005,data/raw/Survey369/videos\37_16_Pabli.mp4,0.6088896989822388,fake
+S006,data/raw/Survey369/videos\39_16_Virgi.mp4,0.7810831665992737,fake
+S007,data/raw/Survey369/videos\40_16_Jessy.mp4,0.5543716549873352,fake
+S008,data/raw/Survey369/videos\42_16_Dalbe.mp4,0.7379046678543091,fake
+S009,data/raw/Survey369/videos\44_16_Bune.mp4,0.5769283175468445,fake
+S010,data/raw/Survey369/videos\54_16_Prof.mp4,0.6260247826576233,fake
+S011,data/raw/Survey369/videos\62_16_Mae.mp4,0.6792455911636353,fake
+S012,data/raw/Survey369/videos\63_16_Chage.mp4,0.6657773852348328,fake
+S013,data/raw/Survey369/videos\65_16_Vline.mp4,0.5122905969619751,fake
+S014,data/raw/Survey369/videos\7_16_EL&N.mp4,0.6677577495574951,fake
+S015,data/raw/Survey369/videos\87_16_Lollo.mp4,0.43241387605667114,real

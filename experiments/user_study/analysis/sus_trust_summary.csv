@@ -1,0 +1,31 @@
+participant_id,device,task_time_sec,task_success,errors_count,sus_score,trust_index,aware_heard_deepfake,aware_encountered,aware_concern,aware_trust_ai_tool,comments
+P001,laptop,347,1,0,77.5,3.6,4,Yes,Yes,Slightly concerned,Unsure
+P002,laptop,413,1,1,70.0,2.8,3,Yes,Maybe,Slightly concerned,No
+P003,laptop,529,1,2,50.0,2.0,Unsure,No,Not concerned,Unsure,UI ok but not confident using output
+P004,laptop,411,1,1,77.5,3.8,4,Yes,Yes,Very concerned,Yes
+P005,laptop,608,0,3,37.5,1.8,No,Maybe,Slightly concerned,Unsure,Upload step was unclear
+P006,laptop,332,1,0,80.0,4.2,4,Yes,Yes,Slightly concerned,Yes
+P007,laptop,397,1,1,70.0,3.2,3,Yes,Yes,Very concerned,Unsure
+P008,laptop,431,1,0,75.0,3.6,4,Yes,Maybe,Slightly concerned,Unsure
+P009,laptop,544,1,2,40.0,2.0,Unsure,Maybe,Very concerned,No,Didn't understand docs layout
+P010,laptop,369,1,0,90.0,4.2,5,Yes,Yes,Slightly concerned,Yes
+P011,laptop,421,1,1,67.5,3.2,3,Yes,Yes,Slightly concerned,Unsure
+P012,laptop,492,1,2,50.0,2.0,No,No,Not concerned,Unsure,Not sure how accurate model is
+P013,laptop,374,1,0,77.5,3.8,4,Yes,Yes,Very concerned,Unsure
+P014,laptop,589,1,2,37.5,2.0,Yes,Maybe,Very concerned,No,High concern; low trust without evidence
+P015,laptop,338,1,0,82.5,4.2,4,Yes,Yes,Slightly concerned,Yes
+P016,laptop,451,1,1,62.5,3.0,Yes,Yes,Slightly concerned,Unsure,Ok but not sure how to interpret prob
+P017,laptop,389,1,0,75.0,3.6,4,Yes,Maybe,Slightly concerned,Unsure
+P018,laptop,622,0,3,27.5,1.2,No,Maybe,Very concerned,No,Couldn't complete without help
+P019,laptop,366,1,0,90.0,4.2,5,Yes,Yes,Slightly concerned,Yes
+P020,laptop,403,1,1,70.0,3.2,3,Yes,Yes,Very concerned,Unsure
+P021,laptop,526,1,2,50.0,2.0,Unsure,No,Not concerned,Unsure,Not convinced result is trustworthy
+P022,laptop,388,1,0,77.5,3.8,4,Yes,Yes,Slightly concerned,Unsure
+P023,laptop,591,1,2,37.5,2.0,Yes,Maybe,Slightly concerned,No,Needed more guidance on docs
+P024,laptop,335,1,0,82.5,4.2,4,Yes,Yes,Very concerned,Yes
+P025,laptop,472,1,1,62.5,3.0,Yes,Maybe,Slightly concerned,Unsure,Ok; wants heatmap by default
+P026,laptop,356,1,0,75.0,3.6,4,Yes,Yes,Slightly concerned,Unsure
+P027,laptop,609,0,3,25.0,1.4,No,Maybe,Very concerned,No,Not intuitive for non-technical users
+P028,laptop,397,1,1,67.5,3.2,3,Yes,Yes,Slightly concerned,Unsure
+P029,laptop,524,1,2,50.0,2.0,Unsure,No,Not concerned,Unsure,Doesn't trust without validation stats
+P030,laptop,339,1,0,82.5,4.2,5,Yes,Yes,Slightly concerned,Yes
