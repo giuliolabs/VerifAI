@@ -10,8 +10,22 @@ venv/\
 .DS_Store
 
 # ignore raw dataset folders
-data/raw/
-*.mp4
-*.avi
-*.mov
+data/
+datasets/
+raw/
+runs/
+outputs/
+checkpoints/
+models/
+*.pt
+*.pth
+*.ckpt
+*.h5
+*.onnx
 *.zip
+*.tar
+*.tar.gz
+*.7z
+*.mp4
+*.mov
+*.avi
