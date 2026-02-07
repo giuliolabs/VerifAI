@@ -1,16 +1,4 @@
-﻿__pycache__/\
-*.pyc\
-.env\
-venv/\
-.env/\
-.vscode/\
-*.pth\
-*.ckpt\
-*.mp4\
-.DS_Store
-
-# ignore raw dataset folders
-data/
+﻿data/
 datasets/
 raw/
 runs/
