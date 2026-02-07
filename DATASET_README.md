@@ -27,7 +27,7 @@ This project uses the following datasets for deepfake detection research, benchm
 4) FakeAVCeleb_v1.2
 - Type: multimodal (audio/video) deepfake dataset
 - Labels: ARVR / AFVR / ARVF / AFVF
-- Use: audio-visual fusion experiments and modality-specific analysis
+- Use: audiovisual fusion experiments and modality-specific analysis
 - Stored at: data\raw\FakeAVCeleb_v1.2
 - Notes: modality labels preserved for per-modality metrics and ablation studies.
 
