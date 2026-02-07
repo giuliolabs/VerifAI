@@ -5,6 +5,7 @@ runs/
 outputs/
 checkpoints/
 models/
+experiments/**/results/
 *.pt
 *.pth
 *.ckpt
