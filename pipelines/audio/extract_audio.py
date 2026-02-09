@@ -33,7 +33,7 @@ def run_cmd(cmd):
 
 
 def has_audio_stream(video_path: str) -> bool:
-    # ffprobe returns stream lines if audio exists, otherwise empty
+    # ffprobe returns streamlines if audio exists, otherwise empty
     cmd = [
         "ffprobe",
         "-v", "error",

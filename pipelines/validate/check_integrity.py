@@ -84,7 +84,7 @@ def check_audio_and_mfcc(audio_dir: Path, mfcc_dir: Path, n_show=10):
 
 
 def main():
-    out = Path("experiments/results/preprocessing_checks/integrity_report.txt")
+    out = Path("experiments/ablations/results/preprocessing_checks/integrity_report.txt")
     out.parent.mkdir(parents=True, exist_ok=True)
 
     lines = ["PREPROCESSING INTEGRITY REPORT", "================================\n", "=== DeeperForensics (VAL) ==="]
