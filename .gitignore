@@ -1,3 +1,7 @@
 ﻿data/interim
 data/processed
-data/raw
+data/raw/Celeb-DF-v2
+data/raw/DeeperForensics
+data/raw/FaceForensics++_C23
+data/raw/FakeAVCeleb_v1.2
+data/raw/Survey369
