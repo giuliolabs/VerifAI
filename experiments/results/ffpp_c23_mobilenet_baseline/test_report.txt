@@ -1,0 +1,16 @@
+VIDEO-LEVEL RESULTS (FF++ C23 baseline)
+Num videos: 712
+Accuracy: 0.7275280898876404
+AUC: 0.5293751112693609
+Confusion matrix:
+[[ 16 148]
+ [ 46 502]]
+
+              precision    recall  f1-score   support
+
+           0     0.2581    0.0976    0.1416       164
+           1     0.7723    0.9161    0.8381       548
+
+    accuracy                         0.7275       712
+   macro avg     0.5152    0.5068    0.4898       712
+weighted avg     0.6539    0.7275    0.6776       712

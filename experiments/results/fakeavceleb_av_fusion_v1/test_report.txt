@@ -1,0 +1,23 @@
+AUDIO+VIDEO FUSION RESULTS (FakeAVCeleb AV Fusion v1)
+
+Checkpoint: experiments\results\fakeavceleb_av_fusion_v1\best_model.pt
+MFCC max len (batching): 200
+Num samples: 2075
+
+Accuracy: 0.999036
+F1: 0.999491
+AUC: 0.999609
+
+Confusion matrix:
+[[ 108    0]
+ [   2 1965]]
+
+Classification report:
+              precision    recall  f1-score   support
+
+           0     0.9818    1.0000    0.9908       108
+           1     1.0000    0.9990    0.9995      1967
+
+    accuracy                         0.9990      2075
+   macro avg     0.9909    0.9995    0.9952      2075
+weighted avg     0.9991    0.9990    0.9990      2075
