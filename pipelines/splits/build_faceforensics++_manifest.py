@@ -28,7 +28,7 @@ python pipelines/splits/build_faceforensics++_manifest.py
 ------------------------------------------------
 OUTPUTS
 ------------------------------------------------
-data/metadata/faceforensicspp_c23_manifest.csv
+data/metadata/faceforensics++_c23_manifest.csv
 data/splits/ffpp_c23_train.csv
 data/splits/ffpp_c23_val.csv
 data/splits/ffpp_c23_test.csv
@@ -136,7 +136,7 @@ def main() -> None:
 
     df = pd.DataFrame(rows)
 
-    out_manifest = Path("data/metadata/faceforensicspp_c23_manifest.csv")
+    out_manifest = Path("data/metadata/faceforensics++_c23_manifest.csv")
     out_manifest.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_manifest, index=False)
 
