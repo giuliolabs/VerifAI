@@ -17,8 +17,6 @@ Output:
 
 import argparse
 from pathlib import Path
-import hashlib
-import re
 
 import cv2
 import pandas as pd

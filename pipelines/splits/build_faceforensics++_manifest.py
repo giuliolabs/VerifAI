@@ -29,9 +29,9 @@ python pipelines/splits/build_faceforensics++_manifest.py
 OUTPUTS
 ------------------------------------------------
 data/metadata/faceforensics++_c23_manifest.csv
-data/splits/ffpp_c23_train.csv
-data/splits/ffpp_c23_val.csv
-data/splits/ffpp_c23_test.csv
+data/splits/faceforensics++_train.csv
+data/splits/faceforensics++_val.csv
+data/splits/faceforensics++_test.csv
 
 ------------------------------------------------
 NOTES FOR EXAMINERS
