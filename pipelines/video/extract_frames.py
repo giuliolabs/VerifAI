@@ -25,9 +25,9 @@ INPUT
 ------------------------------------------------
 CSV files (created beforehand by pipelines/splits/make_splits.py):
 
-    data/splits/train.csv
-    data/splits/val.csv
-    data/splits/test.csv
+    data/splits/faceforensics++_train.csv
+    data/splits/faceforensics++_val.csv
+    data/splits/faceforensics++_test.csv
 
 Each CSV must contain columns:
     video_path,label,video_id

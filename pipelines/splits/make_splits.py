@@ -72,9 +72,9 @@ def main():
     out_dir = Path("data/splits")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    train_df.to_csv(out_dir / "train.csv", index=False)
-    val_df.to_csv(out_dir / "val.csv", index=False)
-    test_df.to_csv(out_dir / "test.csv", index=False)
+    train_df.to_csv(out_dir / "faceforensics++_train.csv", index=False)
+    val_df.to_csv(out_dir / "faceforensics++_val.csv", index=False)
+    test_df.to_csv(out_dir / "faceforensics++_test.csv", index=False)
 
     print("Splits written:")
     print(" train:", len(train_df))
