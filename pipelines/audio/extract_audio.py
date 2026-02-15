@@ -80,7 +80,10 @@ def main():
 
     map_path = out_dir / "_id_map.csv"
     if not map_path.exists():
-        map_path.write_text("safe_id,video_id,video_path,status,error_tail\n", encoding="utf-8")
+        map_path.write_text(
+            "safe_id,video_id,video_path,status,error_tail\n",
+            encoding="utf-8"
+        )
 
     extracted = skipped = failed = no_audio = 0
 

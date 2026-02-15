@@ -307,7 +307,7 @@ def main() -> None:
     if "metadata_features" in stages:
         stage_metadata_features(selected)
 
-    print("\n✅ Pipeline complete.")
+    print("\nPipeline complete.")
 
 
 if __name__ == "__main__":

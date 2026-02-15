@@ -2,25 +2,15 @@ PREPROCESSING INTEGRITY REPORT
 ================================
 
 === DeeperForensics (VAL) ===
-06682e6f425d5d4c: frames=5
-dac98e86ad969349: frames=5
-14f904b0a5f9b382: frames=5
-6e9233ea0c551189: frames=5
-b5fc13933da8be97: frames=5
+5a7d1ffe7b35f72a: frames=5
+98c78273de7080c6: frames=5
+0c2ff3ce51fe54eb: frames=5
+c0d1470a00c8d54a: frames=5
+d67e952c4fe99140: frames=5
 Total frame folders: 738
 
 Audio:
 No audio streams detected in DeeperForensics VAL subset (ffprobe: 738/738 no-audio). Audio + MFCC intentionally skipped.
 
 === FakeAVCeleb_v1.2 (VAL) ===
-OK | f00a773149468888 | wav=True mfcc=True mfcc_shape=(40, 183)
-OK | b38a913f5ec2fead | wav=True mfcc=True mfcc_shape=(40, 143)
-OK | 41d97d7d6daa095e | wav=True mfcc=True mfcc_shape=(40, 167)
-OK | ba49cb072960dbc3 | wav=True mfcc=True mfcc_shape=(40, 137)
-OK | 236db7e717b5b627 | wav=True mfcc=True mfcc_shape=(40, 102)
-OK | 475b74473aacb12c | wav=True mfcc=True mfcc_shape=(40, 179)
-OK | 79ae65f63553b146 | wav=True mfcc=True mfcc_shape=(40, 121)
-OK | c8d5c234e72303f3 | wav=True mfcc=True mfcc_shape=(40, 133)
-OK | ed26651fde24e503 | wav=True mfcc=True mfcc_shape=(40, 131)
-OK | e99040b3f5a3a38e | wav=True mfcc=True mfcc_shape=(40, 171)
-Passed 10/10 sampled items
+Missing _id_map.csv in data\interim\audio\FakeAVCeleb_v1.2\val
