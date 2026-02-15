@@ -284,7 +284,7 @@ def main() -> None:
 
     if "splits" in stages:
         stage_splits()
-        # sanity: ensure split CSVs exist
+        # ensure split CSVs exist
         for cfg in selected:
             for sp in split_paths(cfg):
                 assert_exists(sp, f"split CSV for {cfg.key}")
