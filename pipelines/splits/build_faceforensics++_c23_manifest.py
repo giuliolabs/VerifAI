@@ -115,6 +115,7 @@ def main() -> None:
             "label": 0,
             "method": REAL_FOLDER,
             "compression": COMPRESSION,
+            "group_id": vp.stem,
         })
 
     # ---- FAKE ----
@@ -132,6 +133,7 @@ def main() -> None:
                 "label": 1,
                 "method": method,
                 "compression": COMPRESSION,
+                "group_id": vp.stem,
             })
 
     df = pd.DataFrame(rows)
@@ -145,22 +147,21 @@ def main() -> None:
     print("Label distribution:\n", df["label"].value_counts(dropna=False))
     print("\nMethod distribution:\n", df["method"].value_counts(dropna=False))
 
-    # Train/val/test split
-    ids = df["video_id"].tolist()
-    train_ids, val_ids, test_ids = split_ids(ids, seed=42)
+    # Train/val/test split (GROUPED to avoid leakage across methods)
+    group_ids = sorted(df["group_id"].unique().tolist())
+    train_g, val_g, test_g = split_ids(group_ids, seed=42)
 
     Path("data/splits").mkdir(parents=True, exist_ok=True)
 
-    def save_split(split_name: str, id_list: list[str]):
-        split_df = df[df["video_id"].isin(id_list)].copy()
-        out_path = Path("data/splits") / f"ffpp_c23_{split_name}.csv"
+    def save_split(split_name: str, group_list: list[str]):
+        split_df = df[df["group_id"].isin(group_list)].copy()
+        out_path = Path("data/splits") / f"faceforensics++_c23_{split_name}.csv"
         split_df.to_csv(out_path, index=False)
         print(f"Saved split: {out_path} rows={len(split_df)}")
 
-    save_split("train", train_ids)
-    save_split("val", val_ids)
-    save_split("test", test_ids)
-
+    save_split("train", train_g)
+    save_split("val", val_g)
+    save_split("test", test_g)
 
 if __name__ == "__main__":
     main()
