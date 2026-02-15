@@ -19,7 +19,7 @@ Usage examples:
 --------------
 python pipelines/run_pipeline.py --datasets all --stages all
 
-python pipelines/run_pipeline.py --datasets celebdfv2 faceforensicspp_c23 --stages splits integrity frames audio
+python pipelines/run_pipeline.py --datasets celebdfv2 faceforensics++_c23 --stages splits integrity frames audio
 audio_features video_features metadata_features
 
 python pipelines/run_pipeline.py --datasets all --stages all --frames_per_video 5 --n_mfcc 40
@@ -70,8 +70,8 @@ DATASETS: Dict[str, DatasetCfg] = {
         split_val_csv="data/splits/deeperforensics_val.csv",
         split_test_csv="data/splits/deeperforensics_test.csv",
     ),
-    "faceforensicspp_c23": DatasetCfg(
-        key="faceforensicspp_c23",
+    "faceforensics++_c23": DatasetCfg(
+        key="faceforensics++_c23",
         display_name="FaceForensics++_C23",
         manifest_builder="pipelines/splits/build_faceforensics++_c23_manifest.py",
         split_train_csv="data/splits/faceforensics++_c23_train.csv",
@@ -250,7 +250,7 @@ def stage_metadata_features(datasets: List[DatasetCfg]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--datasets", nargs="+", default=["all"],
-                        help="Datasets to run: all | celebdfv2 deeperforensics faceforensicspp_c23 fakeavceleb")
+                        help="Datasets to run: all | celebdfv2 deeperforensics faceforensics++_c23 fakeavceleb")
     parser.add_argument("--stages", nargs="+", default=["all"],
                         help="Stages: all | manifests splits integrity frames audio audio_features video_features metadata_features")
     parser.add_argument("--frames_per_video", type=int, default=5)
