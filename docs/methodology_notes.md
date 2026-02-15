@@ -11,7 +11,7 @@ as a real-world web service.
 The methodology is structured into modular phases, allowing individual components
 (e.g. data pipelines, detection models, explainability modules) to be developed,
 tested, and evaluated independently. This modularity supports both academic
-rigour and long-term system extensibility.
+rigor and long-term system extensibility.
 
 ---
 
