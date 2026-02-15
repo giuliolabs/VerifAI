@@ -23,15 +23,15 @@ DEPENDENCIES
 ------------------------------------------------
 RUN
 ------------------------------------------------
-python pipelines/splits/build_faceforensics++_manifest.py
+python pipelines/splits/build_faceforensics++_c23_manifest.py
 
 ------------------------------------------------
 OUTPUTS
 ------------------------------------------------
 data/metadata/faceforensics++_c23_manifest.csv
-data/splits/faceforensics++_train.csv
-data/splits/faceforensics++_val.csv
-data/splits/faceforensics++_test.csv
+data/splits/faceforensics++_c23_train.csv
+data/splits/faceforensics++_c23_val.csv
+data/splits/faceforensics++_c23_test.csv
 
 ------------------------------------------------
 NOTES FOR EXAMINERS

@@ -20,9 +20,9 @@ dataset:
   frames_root: data/interim/frames/FaceForensics++_C23
   splits_dir: data/splits
   split_files:
-    train: data/splits/faceforensics++_train.csv
-    val: data/splits/faceforensics++_val.csv
-    test: data/splits/faceforensics++_test.csv
+    train: data/splits/faceforensics++_c23_train.csv
+    val: data/splits/faceforensics++_c23_val.csv
+    test: data/splits/faceforensics++_c23_test.csv
 
 preprocessing:
   frames_per_video: 5
