@@ -8,7 +8,8 @@ Dependencies:
     pip install pandas tqdm
 
 Run:
-    python pipelines/audio/extract_audio.py --split_csv data/splits/deeperforensics_val.csv --out_dir data/interim/audio/DeeperForensics/val
+    python pipelines/audio/extract_audio.py --split_csv data/splits/deeperforensics_val.csv --out_dir data/interim/
+    audio/DeeperForensics/val
 
 Outputs:
     <out_dir>/<safe_id>.wav
@@ -79,7 +80,7 @@ def main():
 
     map_path = out_dir / "_id_map.csv"
     if not map_path.exists():
-        map_path.write_text("safe_id,video_id,video_path\n", encoding="utf-8")
+        map_path.write_text("safe_id,video_id,video_path,status,error_tail\n", encoding="utf-8")
 
     extracted = skipped = failed = no_audio = 0
 
@@ -90,27 +91,37 @@ def main():
         safe_id = make_safe_id(video_id)
         out_wav = out_dir / f"{safe_id}.wav"
 
+        error_tail = ""
+
         # resume-safe
         if out_wav.exists() and out_wav.stat().st_size > 0:
             skipped += 1
-            continue
-
-        # NEW: skip silent videos cleanly
-        if not has_audio_stream(video_path):
-            no_audio += 1
-            continue
-
-        ok, err = extract_wav(video_path, out_wav)
-
-        if ok and out_wav.exists() and out_wav.stat().st_size > 0:
-            extracted += 1
-            with open(map_path, "a", encoding="utf-8") as f:
-                f.write(f"{safe_id},{video_id},{video_path}\n")
+            status = "skipped"
         else:
-            failed += 1
-            # keep stderr short (tail is most useful)
-            err_tail = err[-300:].replace("\n", " ")
-            print(f"\nFFmpeg failed: {video_path}\nERR_TAIL: {err_tail}\n")
+            # skip silent videos cleanly
+            if not has_audio_stream(video_path):
+                no_audio += 1
+                status = "no_audio"
+            else:
+                ok, err = extract_wav(video_path, out_wav)
+
+                if ok and out_wav.exists() and out_wav.stat().st_size > 0:
+                    extracted += 1
+                    status = "extracted"
+                else:
+                    failed += 1
+                    status = "failed"
+                    error_tail = (err[-300:].replace("\n", " ") if err else "")
+
+                    # keep stderr short (tail is most useful)
+                    if error_tail:
+                        print(f"\nFFmpeg failed: {video_path}\nERR_TAIL: {error_tail}\n")
+                    else:
+                        print(f"\nFFmpeg failed: {video_path}\n(no stderr)\n")
+
+        # ALWAYS log a row (perfect audit trail)
+        with open(map_path, "a", encoding="utf-8") as f:
+            f.write(f"{safe_id},{video_id},{video_path},{status},{error_tail}\n")
 
     print("\nDone.")
     print("Extracted:", extracted)
