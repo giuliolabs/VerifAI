@@ -35,6 +35,37 @@ def make_safe_id(video_id: str) -> str:
     return hashlib.sha1(video_id.encode("utf-8")).hexdigest()[:16]
 
 
+def normalize_label(value) -> float:
+    """
+    Converts common label formats to 0.0/1.0:
+      - real/fake
+      - 0/1
+      - true/false
+      - Real/Fake with any casing
+    Returns 0.0 if unknown (conservative).
+    """
+    if value is None:
+        return 0.0
+
+    # numeric already?
+    try:
+        return float(value)
+    except Exception:
+        pass
+
+    s = str(value).strip().lower()
+    if s in {"real", "bonafide", "genuine", "negative", "authentic"}:
+        return 0.0
+    if s in {"fake", "spoof", "forged", "positive", "deepfake"}:
+        return 1.0
+    if s in {"true", "yes"}:
+        return 1.0
+    if s in {"false", "no"}:
+        return 0.0
+
+    return 0.0
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--split_csv", required=True, type=str)
@@ -71,7 +102,7 @@ def main():
             skipped += 1
             continue
 
-        label = float(row["label"]) if "label" in df.columns else 0.0
+        label = normalize_label(row["label"]) if "label" in df.columns else 0.0
         method = str(row["method"]) if "method" in df.columns else ""
         comp = str(row["compression"]) if "compression" in df.columns else ""
         vpath = str(row["video_path"]) if "video_path" in df.columns else ""
