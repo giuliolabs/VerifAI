@@ -46,6 +46,7 @@ from fastapi import FastAPI
 
 from backend.app.api.detect import router as detect_router
 from backend.app.api import metadata
+from backend.app.api.explain import router as explain_router
 
 app = FastAPI(
     title="VerifAI – Multimodal Deepfake Detection API",
@@ -55,6 +56,7 @@ app = FastAPI(
 # Register API routes
 app.include_router(detect_router, prefix="/api", tags=["detect"])
 app.include_router(metadata.router, prefix="/api", tags=["metadata"])
+app.include_router(explain_router, prefix="/api", tags=["explain"])
 
 
 @app.get("/")
