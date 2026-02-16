@@ -1,11 +1,11 @@
 torch~=2.10.0
 torchvision~=0.25.0
-uvicorn==0.30.6
-python-multipart==0.0.9
+uvicorn==0.40.0
+python-multipart==0.0.22
 tqdm~=4.67.3
-numpy~=2.3.5
+numpy~=2.4.2
 scikit-learn~=1.8.0
-pillow~=11.3.0
+pillow~=12.1.1
 opencv-python~=4.13.0.92
 pandas~=3.0.0
 fastapi~=0.129.0
