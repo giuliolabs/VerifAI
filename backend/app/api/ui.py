@@ -61,7 +61,7 @@ def home_page():
       flex-direction:column;
     }
     .logo{
-      width:44px;height:44px;border-radius:14px;
+      width:90px;height:90px;border-radius:14px;
       background: linear-gradient(135deg, rgba(124,58,237,1), rgba(34,211,238,1));
       box-shadow: 0 10px 30px rgba(124,58,237,.25);
       position:relative;
@@ -225,7 +225,7 @@ def home_page():
   <div class="wrap">
     <div class="header">
       <div class="brand">
-        <img src="/static/verifai-logo.png" alt="VerifAI Logo" style="height:44px;">
+        <img src="/static/verifai-logo.png" alt="VerifAI Logo" style="height:90px;">
         <div>
           <h1>VerifAI – Deepfake Detection</h1>
           <div class="sub">Upload a video to get a fake probability.</div>
