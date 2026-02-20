@@ -48,6 +48,7 @@ from backend.app.api.detect import router as detect_router
 from backend.app.api import metadata
 from backend.app.api.explain import router as explain_router
 from backend.app.api.ui import router as ui_router
+from fastapi.staticfiles import StaticFiles
 
 
 app = FastAPI(
@@ -61,6 +62,7 @@ app = FastAPI(
 app.include_router(detect_router, prefix="/api", tags=["detect"])
 app.include_router(metadata.router, prefix="/api", tags=["metadata"])
 app.include_router(explain_router, prefix="/api", tags=["explain"])
+app.mount("/static", StaticFiles(directory="backend/app/static"), name="static")
 
 # -----------------------------
 # UI ROUTE (mounted at "/")
