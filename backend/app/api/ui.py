@@ -11,7 +11,7 @@ def home_page():
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>VerifAI – Deepfake Detection</title>
+  <title>VerifAI - Deepfake Detection</title>
   <style>
     :root{
       --bg:#070A12;
@@ -228,7 +228,7 @@ def home_page():
         <div class="logo"></div>
         <div>
           <h1>VerifAI – Deepfake Detection</h1>
-          <div class="sub">Upload a video to get a <b>fake probability</b>.</div>
+          <div class="sub">Upload a video to get a fake probability.</div>
         </div>
       </div>
       <div class="pill">FastAPI</div>
@@ -246,7 +246,7 @@ def home_page():
               <div class="chip">AI</div>
               <div class="meta">
                 <div class="t">Choose a video file</div>
-                <div class="m">Supported: .mp4 .mov .avi • Recommended: &lt; 25MB</div>
+                <div class="m">Supported: .mp4 .mov .avi Recommended: &lt; 25MB</div>
               </div>
             </div>
 
