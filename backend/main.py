@@ -43,6 +43,7 @@ Project: VerifAI – Deepfake Detection Framework
 
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 
 from backend.app.api.detect import router as detect_router
 from backend.app.api import metadata
@@ -62,7 +63,7 @@ app.include_router(explain_router, prefix="/api", tags=["explain"])
 app.include_router(ui_router, prefix="", tags=["ui"])
 
 
-@app.get("/")
+# Redirect root to UI
+@app.get("/", include_in_schema=False)
 def root():
-    """Simple health check endpoint."""
-    return {"status": "VerifAI backend running"}
+    return RedirectResponse(url="/try")
