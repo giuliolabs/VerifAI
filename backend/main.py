@@ -43,7 +43,6 @@ Project: VerifAI – Deepfake Detection Framework
 
 
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse
 
 from backend.app.api.detect import router as detect_router
 from backend.app.api import metadata
@@ -56,14 +55,14 @@ app = FastAPI(
     version="1.0"
 )
 
-# Register API routes
+# -----------------------------
+# API ROUTES
+# -----------------------------
 app.include_router(detect_router, prefix="/api", tags=["detect"])
 app.include_router(metadata.router, prefix="/api", tags=["metadata"])
 app.include_router(explain_router, prefix="/api", tags=["explain"])
+
+# -----------------------------
+# UI ROUTE (mounted at "/")
+# -----------------------------
 app.include_router(ui_router, prefix="", tags=["ui"])
-
-
-# Redirect root to UI
-@app.get("/", include_in_schema=False)
-def root():
-    return RedirectResponse(url="/try")

@@ -3,8 +3,8 @@ from fastapi.responses import HTMLResponse
 
 router = APIRouter()
 
-@router.get("/try", response_class=HTMLResponse)
-def try_page():
+@router.get("/", response_class=HTMLResponse)
+def home_page():
     return """
 <!doctype html>
 <html lang="en">
