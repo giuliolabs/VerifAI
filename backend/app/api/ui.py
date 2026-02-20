@@ -225,7 +225,7 @@ def home_page():
   <div class="wrap">
     <div class="header">
       <div class="brand">
-        <img src="/static/logo.png" alt="VerifAI Logo" style="height:44px;">
+        <img src="/static/verifai-logo.png" alt="VerifAI Logo" style="height:44px;">
         <div>
           <h1>VerifAI – Deepfake Detection</h1>
           <div class="sub">Upload a video to get a fake probability.</div>
