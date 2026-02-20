@@ -224,7 +224,7 @@ def home_page():
         <div class="logo"></div>
         <div>
           <h1>VerifAI – Deepfake Detection</h1>
-          <div class="sub">Upload a video to get a <b>fake probability</b>. This demo calls <code>/api/predict</code> on the same server.</div>
+          <div class="sub">Upload a video to get a <b>fake probability</b>.
         </div>
       </div>
       <div class="pill">Production API • FastAPI</div>
@@ -281,7 +281,7 @@ def home_page():
         <div class="body">
           <p>
             This UI sends your selected video to the API endpoint and shows the JSON response.
-            For best stability on free hosting, use short clips.
+            For best stability, use short clips.
           </p>
           <div class="list">
             <div class="item">
