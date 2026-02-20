@@ -46,7 +46,7 @@ def home_page():
     .wrap{width:min(980px, 100%);}
     .header{
       display:flex;
-      align-items:flex-start;
+      align-items:center;
       justify-content:space-between;
       gap:16px;
       margin-bottom:16px;
@@ -55,6 +55,10 @@ def home_page():
       display:flex;
       gap:14px;
       align-items:center;
+    }
+    .brandText {
+      display:flex;
+      flex-direction:column;
     }
     .logo{
       width:44px;height:44px;border-radius:14px;
@@ -224,10 +228,10 @@ def home_page():
         <div class="logo"></div>
         <div>
           <h1>VerifAI – Deepfake Detection</h1>
-          <div class="sub">Upload a video to get a <b>fake probability</b>.
+          <div class="sub">Upload a video to get a <b>fake probability</b>.</div>
         </div>
       </div>
-      <div class="pill">Production API • FastAPI</div>
+      <div class="pill">FastAPI</div>
     </div>
 
     <div class="grid">
