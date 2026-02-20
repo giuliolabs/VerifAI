@@ -297,9 +297,6 @@ def try_page():
               <span>Swagger UI at <code>/docs</code></span>
             </div>
           </div>
-          <div class="tiny">
-            Tip: If uploads are large, add a max-size guard in the backend to prevent 502s.
-          </div>
         </div>
       </div>
     </div>
