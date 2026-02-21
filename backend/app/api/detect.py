@@ -38,14 +38,15 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from backend.app.services.inference_service import run_inference
 from backend.app.models.schemas import PredictResponse
 from backend.app.auth.api_key import require_api_key
+from backend.app.db.events import log_prediction
 
 router = APIRouter()
 
-ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mov"}  # keep aligned with your report claims
-MAX_UPLOAD_MB = 25  # adjust if you upgrade Render plan
+ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mov"}
+MAX_UPLOAD_MB = 10
 
 
-@router.post("/predict", response_model=PredictResponse)
+@router.post("/predict", response_model=PredictResponse, dependencies=[Depends(require_api_key)])
 async def predict(file: UploadFile = File(...)):
     """
     Run multimodal deepfake detection on an uploaded video.
@@ -114,5 +115,7 @@ async def predict(file: UploadFile = File(...)):
             status_code=500,
             detail=f"Inference failed: {type(exception).__name__}",
         ) from exception
+
+    log_prediction(file.filename, label, float(prob))  # Log prediction to database
 
     return {"label": label, "prob_fake": float(prob)}

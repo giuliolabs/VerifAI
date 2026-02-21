@@ -43,28 +43,44 @@ Project: VerifAI – Deepfake Detection Framework
 
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from backend.app.api.detect import router as detect_router
 from backend.app.api import metadata
 from backend.app.api.explain import router as explain_router
 from backend.app.api.ui import router as ui_router
-from fastapi.staticfiles import StaticFiles
+from backend.app.db.events import init_db
 
 
 app = FastAPI(
     title="VerifAI – Multimodal Deepfake Detection API",
-    version="1.0"
+    version="1.0",
 )
 
 # -----------------------------
-# API ROUTES
+# Startup (init SQLite audit DB)
+# -----------------------------
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
+    print("VerifAI DB initialized")
+
+
+# -----------------------------
+# Static files (logo, etc.)
+# -----------------------------
+app.mount("/static", StaticFiles(directory="backend/app/static"), name="static")
+
+
+# -----------------------------
+# API routes
 # -----------------------------
 app.include_router(detect_router, prefix="/api", tags=["detect"])
 app.include_router(metadata.router, prefix="/api", tags=["metadata"])
 app.include_router(explain_router, prefix="/api", tags=["explain"])
-app.mount("/static", StaticFiles(directory="backend/app/static"), name="static")
+
 
 # -----------------------------
-# UI ROUTE (mounted at "/")
+# UI (mounted at "/")
 # -----------------------------
 app.include_router(ui_router, prefix="", tags=["ui"])
