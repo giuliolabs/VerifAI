@@ -315,6 +315,9 @@ const outEl = document.getElementById("out");
 const badgeEl = document.getElementById("badge");
 const barFill = document.getElementById("barFill");
 
+// TODO: change this to your real key (or set it to "" to disable auth on backend)
+const API_KEY = "verifai_2026_v1.0_key_2102";
+
 function setBadge(kind, text){
   badgeEl.className = "badge" + (kind ? (" " + kind) : "");
   badgeEl.textContent = text;
@@ -360,11 +363,18 @@ async function run(){
   form.append("file", f);
 
   try{
-    const res = await fetch("/api/predict", { method:"POST", body: form });
+    const headers = {};
+    if (API_KEY) headers["X-API-Key"] = API_KEY;
+
+    const res = await fetch("/api/predict", {
+      method: "POST",
+      headers,
+      body: form
+    });
+
     setProgress(75);
     const text = await res.text();
-
-    outEl.textContent = text;
+    outEl.textContent = text || "{}";
 
     if(res.ok){
       setBadge("ok", "OK");
