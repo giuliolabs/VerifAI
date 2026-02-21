@@ -35,9 +35,10 @@ Project: VerifAI – Deepfake Detection Framework
 
 from __future__ import annotations
 
-from fastapi import APIRouter, UploadFile, File, HTTPException
-
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from backend.app.services.inference_service import run_inference
+from backend.app.models.schemas import PredictResponse
+from backend.app.auth.api_key import require_api_key
 
 router = APIRouter()
 
@@ -45,7 +46,7 @@ ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mov"}  # keep aligned with your report c
 MAX_UPLOAD_MB = 25  # adjust if you upgrade Render plan
 
 
-@router.post("/predict")
+@router.post("/predict", response_model=PredictResponse, dependencies=[Depends(require_api_key)])
 async def predict(file: UploadFile = File(...)):
     """
     Run multimodal deepfake detection on an uploaded video.
