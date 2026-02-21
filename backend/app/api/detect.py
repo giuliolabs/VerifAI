@@ -45,7 +45,7 @@ ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mov"}  # keep aligned with your report c
 MAX_UPLOAD_MB = 25  # adjust if you upgrade Render plan
 
 
-@router.post("/predict", response_model=PredictResponse, dependencies=[Depends(require_api_key)])
+@router.post("/predict", response_model=PredictResponse)
 async def predict(file: UploadFile = File(...)):
     """
     Run multimodal deepfake detection on an uploaded video.
