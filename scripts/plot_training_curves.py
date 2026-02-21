@@ -19,7 +19,7 @@ def to_float(value: str) -> float:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True, help="Path to curve CSV")
-    parser.add_argument("--outdir", default=None, help="Output directory for plots (default: same folder as CSV)")
+    parser.add_argument("--outdir", default=None, help="Output directory for plots")
     args = parser.parse_args()
 
     csv_path = Path(args.csv)

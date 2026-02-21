@@ -10,7 +10,6 @@ def append_curve_row(csv_path: str | Path, row: dict) -> None:
     VerifAI note:
     - Keeps a stable header across appends.
     - If new keys appear later, they are ignored (so plots stay consistent).
-      (If you want header expansion, tell me and I’ll adapt it.)
     """
     path = Path(csv_path)
     path.parent.mkdir(parents=True, exist_ok=True)
