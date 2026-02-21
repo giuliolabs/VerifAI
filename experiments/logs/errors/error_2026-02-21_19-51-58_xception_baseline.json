@@ -1,0 +1,19 @@
+{
+  "project": "VerifAI",
+  "run_name": "xception_baseline",
+  "timestamp": "2026-02-21T19:51:58",
+  "exception_type": "ValueError",
+  "exception": "num_samples should be a positive integer value, but got num_samples=0",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\dajan\\OneDrive - University of Greenwich\\Desktop\\UniversityOfGreenwich\\3rd year\\COMP1682\\deepfake-framework\\ml\\train_xception.py\", line 100, in main\n    train_loader = DataLoader(\n                   ^^^^^^^^^^^\n  File \"C:\\Users\\dajan\\AppData\\Roaming\\Python\\Python312\\site-packages\\torch\\utils\\data\\dataloader.py\", line 388, in __init__\n    sampler = RandomSampler(dataset, generator=generator)  # type: ignore[arg-type]\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\dajan\\AppData\\Roaming\\Python\\Python312\\site-packages\\torch\\utils\\data\\sampler.py\", line 162, in __init__\n    raise ValueError(\nValueError: num_samples should be a positive integer value, but got num_samples=0\n",
+  "context": {
+    "script": "ml/train_xception.py"
+  },
+  "git_commit": "09d2c9112569bd1087db42dc0a1e0a690bdff76e",
+  "git_branch": "main",
+  "git_dirty": "M backend/__pycache__/main.cpython-312.pyc\n D experiments/ablations/configs/data_standard.yaml\n D experiments/ablations/configs/ffpp_c23_mobilenet.yaml\n M ml/__pycache__/train.cpython-312.pyc\n M ml/__pycache__/train_xception.cpython-312.pyc\n M ml/train_audio_resnet.py\n M ml/train_av_fusion.py\n M ml/train_xception.py\nAM scripts/add_seed.py\nAM scripts/curve_writer.py\nAM scripts/plot_training_curves.py\nAM scripts/run_logger.py\nAM scripts/setup_experiment_logs.py\n?? backend/app/api/__pycache__/explain.cpython-312.pyc\n?? experiments/configs/\n?? experiments/logs/\n?? scripts/__pycache__/",
+  "torch_version": "2.9.1+cpu",
+  "cuda_available": false,
+  "cuda_version": null,
+  "cudnn_version": null,
+  "gpu_name": null
+}
