@@ -1,6 +1,6 @@
 # Global data standardisation policy
-# This file is referenced by all preprocessing stages
-# and MUST remain immutable after experiments start
+# Author: Giulio Dajani
+# Project: VerifAI
 
 video:
   container: mp4
@@ -8,7 +8,7 @@ video:
   fps: 25
   max_duration_seconds: 10
   resize:
-    enabled: false        # Resize later in dataloader
+    enabled: false
     target_size: [224, 224]
   frame_sampling_fps: 3   # Balanced efficiency vs information
   jpeg_quality: 90
@@ -24,4 +24,4 @@ paths:
   interim_data: data/interim
   processed_data: data/processed
   metadata: data/metadata
-  reports: reports
+  reports: docs/reports
