@@ -1,7 +1,7 @@
 import os
 from fastapi import Header, HTTPException
 
-API_KEY = os.getenv("VERIFAI_API_KEY")  # Render
+API_KEY = os.getenv("verifai_2026_v1.0_key_2102")  # Render
 
 def require_api_key(x_api_key: str | None = Header(default=None)):
     if API_KEY is None:
