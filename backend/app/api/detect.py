@@ -9,7 +9,6 @@ and returning multimodal deepfake detection results.
 DEPENDENCIES
 ------------------------------------------------
     pip install fastapi torch
-
 ------------------------------------------------
 ENDPOINT
 ------------------------------------------------
