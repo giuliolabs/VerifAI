@@ -1,0 +1,23 @@
+AUDIO-ONLY RESULTS (FakeAVCeleb WAV->1D CNN baseline)
+
+Num samples: 2075
+Accuracy: 0.947952
+F1: 0.973281
+AUC: 0.492174
+
+Balanced Accuracy: 0.500000
+MCC: 0.000000
+Predictions CSV: experiments\results\fakeavceleb_wav_encoder_baseline\predictions.csv
+Confusion matrix:
+[[   0  108]
+ [   0 1967]]
+
+Classification report:
+              precision    recall  f1-score   support
+
+           0     0.0000    0.0000    0.0000       108
+           1     0.9480    1.0000    0.9733      1967
+
+    accuracy                         0.9480      2075
+   macro avg     0.4740    0.5000    0.4866      2075
+weighted avg     0.8986    0.9480    0.9226      2075

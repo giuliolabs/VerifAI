@@ -17,7 +17,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
-
+from sklearn.metrics import balanced_accuracy_score, matthews_corrcoef
+import csv
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -94,6 +95,16 @@ def main() -> None:
     y_prob_np = np.array(y_prob)
     y_pred_np = (y_prob_np >= 0.5).astype(int)
 
+    bal_acc = balanced_accuracy_score(y_true_np, y_pred_np)
+    mcc = matthews_corrcoef(y_true_np, y_pred_np)
+
+    preds_csv = out_dir / "predictions.csv"
+    with preds_csv.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["index", "label", "prob_fake", "pred"])
+        for i, (yt, yp, yhat) in enumerate(zip(y_true_np.tolist(), y_prob_np.tolist(), y_pred_np.tolist())):
+            writer.writerow([i, yt, f"{yp:.6f}", yhat])
+
     acc = accuracy_score(y_true_np, y_pred_np)
     f1 = f1_score(y_true_np, y_pred_np)
 
@@ -110,7 +121,10 @@ def main() -> None:
         f"Num samples: {len(y_true_np)}",
         f"Accuracy: {acc:.6f}",
         f"F1: {f1:.6f}",
-        f"AUC: {auc:.6f}\n",
+        f"AUC: {auc:.6f}",
+        f"Balanced Accuracy: {bal_acc:.6f}",
+        f"MCC: {mcc:.6f}",
+        f"Predictions CSV: {preds_csv}\n",
         "Confusion matrix:",
         str(cm),
         "\nClassification report:\n" + report,
