@@ -9,6 +9,10 @@ What this script does
     - MFCC tensor:         [B, 1, 40, T]  (T fixed via mfcc_max_len)
 - Saves best checkpoint (lowest val_loss)
 - Writes fusion_log.csv with loss + metrics + embedding norm statistics
+- Writes VerifAI central logs:
+    - experiments/logs/training_curves/av_fusion_v1.csv
+    - experiments/logs/runs/run_*.json
+    - experiments/logs/errors/error_*.json
 
 Dependencies:
     pip install torch torchvision numpy pandas scikit-learn tqdm pillow
@@ -44,6 +48,9 @@ from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from ml.av_data_loader import FakeAVCelebAVDataset
 from ml.models.fusion.multimodal_fusion import MultimodalFusionModel
 
+from scripts.curve_writer import append_curve_row
+from scripts.run_logger import log_run, log_exception
+
 
 def _to_1d_logits(logits: torch.Tensor) -> torch.Tensor:
     # supports [B], [B,1]
@@ -52,7 +59,7 @@ def _to_1d_logits(logits: torch.Tensor) -> torch.Tensor:
     return logits
 
 
-def evaluate(model, loader, device) -> tuple[float, float, float, float, float]:
+def evaluate(model, loader, device) -> tuple[float, float, float, float, float, float]:
     """
     Returns:
         val_loss, acc, f1, auc, (video_norm_mean, audio_norm_mean)
@@ -76,7 +83,7 @@ def evaluate(model, loader, device) -> tuple[float, float, float, float, float]:
         for video, mfcc, y, _ in tqdm(loader, desc="val", leave=False):
             video = video.to(device)
             mfcc = mfcc.to(device)
-            y = y.to(device)
+            y = y.float().to(device)
 
             logits = model(video, mfcc)
             logits = _to_1d_logits(logits)
@@ -107,7 +114,7 @@ def evaluate(model, loader, device) -> tuple[float, float, float, float, float]:
     y_pred = (y_prob >= 0.5).astype(int)
 
     acc = accuracy_score(y_true, y_pred)
-    f1 = f1_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred, zero_division=0)
 
     try:
         auc = roc_auc_score(y_true, y_prob)
@@ -121,122 +128,180 @@ def evaluate(model, loader, device) -> tuple[float, float, float, float, float]:
 
 
 def main():
-    # -------------------------
-    # Config
-    # -------------------------
-    out_dir = Path("experiments/results/fakeavceleb_av_fusion_v1")
-    out_dir.mkdir(parents=True, exist_ok=True)
+    run_name = "av_fusion_v1"
+    curve_csv = f"experiments/logs/training_curves/{run_name}.csv"
 
-    best_path = out_dir / "best_model.pt"
-    log_path = out_dir / "fusion_log.csv"
+    try:
+        # -------------------------
+        # Config
+        # -------------------------
+        out_dir = Path("experiments/results/fakeavceleb_av_fusion_v1")
+        out_dir.mkdir(parents=True, exist_ok=True)
 
-    epochs = 5
-    lr = 1e-4
-    batch_size = 8          # CPU friendly; increase if you have GPU
-    num_workers = 0         # Windows safe (OneDrive); set 2 if stable
-    mfcc_max_len = 200      # IMPORTANT for batching (pads/truncates MFCC time axis)
+        best_path = out_dir / "best_model.pt"
+        log_path = out_dir / "fusion_log.csv"
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print("Device:", device)
+        epochs = 5
+        lr = 1e-4
+        batch_size = 8          # CPU friendly; increase if you have GPU
+        num_workers = 0         # Windows safe (OneDrive); set 2 if stable
+        mfcc_max_len = 200      # IMPORTANT for batching (pads/truncates MFCC time axis)
 
-    # -------------------------
-    # Data
-    # -------------------------
-    train_ds = FakeAVCelebAVDataset("train", strict=True, mfcc_max_len=mfcc_max_len)
-    val_ds   = FakeAVCelebAVDataset("val",   strict=True, mfcc_max_len=mfcc_max_len)
-
-    print("Train items:", len(train_ds))
-    print("Val items:", len(val_ds))
-
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers)
-    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=num_workers)
-
-    # -------------------------
-    # Model
-    # -------------------------
-    # 🔧 If your model is a builder function, replace this line accordingly.
-    model = MultimodalFusionModel().to(device)
-
-    loss_fn = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
-
-    # -------------------------
-    # Logging setup
-    # -------------------------
-    if not log_path.exists():
-        with open(log_path, "w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                "epoch",
-                "train_loss",
-                "val_loss",
-                "val_acc",
-                "val_f1",
-                "val_auc",
-                "video_emb_norm_mean",
-                "audio_emb_norm_mean",
-            ])
-
-    best_val_loss = float("inf")
-
-    # -------------------------
-    # Train loop
-    # -------------------------
-    for epoch in range(1, epochs + 1):
-        model.train()
-        train_loss_sum = 0.0
-        train_count = 0
-
-        for video, mfcc, y, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{epochs} - train"):
-            video = video.to(device)
-            mfcc = mfcc.to(device)
-            y = y.to(device)
-
-            logits = model(video, mfcc)
-            logits = _to_1d_logits(logits)
-
-            loss = loss_fn(logits, y)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            bs = y.size(0)
-            train_loss_sum += float(loss.item()) * bs
-            train_count += bs
-
-        train_loss = train_loss_sum / max(train_count, 1)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print("Device:", device)
 
         # -------------------------
-        # Validation + metrics
+        # Data
         # -------------------------
-        val_loss, val_acc, val_f1, val_auc, vnorm, anorm = evaluate(model, val_loader, device)
+        train_ds = FakeAVCelebAVDataset("train", strict=True, mfcc_max_len=mfcc_max_len)
+        val_ds   = FakeAVCelebAVDataset("val",   strict=True, mfcc_max_len=mfcc_max_len)
 
-        print(
-            f"Epoch {epoch}: "
-            f"train_loss={train_loss:.4f}  "
-            f"val_loss={val_loss:.4f}  "
-            f"acc={val_acc:.4f}  f1={val_f1:.4f}  auc={val_auc:.4f}"
-        )
+        print("Train items:", len(train_ds))
+        print("Val items:", len(val_ds))
 
-        # write fusion log row
-        with open(log_path, "a", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow([epoch, train_loss, val_loss, val_acc, val_f1, val_auc, vnorm, anorm])
+        if len(train_ds) == 0 or len(val_ds) == 0:
+            raise FileNotFoundError(
+                "No AV samples found. Check FakeAVCeleb paths, splits, and preprocessing outputs."
+            )
 
-        # save best
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            torch.save({
-                "model_state": model.state_dict(),
+        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers)
+        val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
+        # -------------------------
+        # Model
+        # -------------------------
+        model = MultimodalFusionModel().to(device)
+
+        loss_fn = nn.BCEWithLogitsLoss()
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+
+        # -------------------------
+        # Logging setup
+        # -------------------------
+        if not log_path.exists():
+            with open(log_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow([
+                    "epoch",
+                    "train_loss",
+                    "val_loss",
+                    "val_acc",
+                    "val_f1",
+                    "val_auc",
+                    "video_emb_norm_mean",
+                    "audio_emb_norm_mean",
+                ])
+
+        best_val_loss = float("inf")
+        best_epoch = 0
+        best_val_acc = float("nan")
+        best_val_f1 = float("nan")
+        best_val_auc = float("nan")
+
+        # -------------------------
+        # Train loop
+        # -------------------------
+        for epoch in range(1, epochs + 1):
+            model.train()
+            train_loss_sum = 0.0
+            train_count = 0
+
+            for video, mfcc, y, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{epochs} - train"):
+                video = video.to(device)
+                mfcc = mfcc.to(device)
+                y = y.float().to(device)
+
+                logits = model(video, mfcc)
+                logits = _to_1d_logits(logits)
+
+                loss = loss_fn(logits, y)
+
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                bs = y.size(0)
+                train_loss_sum += float(loss.item()) * bs
+                train_count += bs
+
+            train_loss = train_loss_sum / max(train_count, 1)
+
+            # -------------------------
+            # Validation + metrics
+            # -------------------------
+            val_loss, val_acc, val_f1, val_auc, vnorm, anorm = evaluate(model, val_loader, device)
+
+            print(
+                f"Epoch {epoch}: "
+                f"train_loss={train_loss:.4f}  "
+                f"val_loss={val_loss:.4f}  "
+                f"acc={val_acc:.4f}  f1={val_f1:.4f}  auc={val_auc:.4f}"
+            )
+
+            # write fusion log row
+            with open(log_path, "a", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow([epoch, train_loss, val_loss, val_acc, val_f1, val_auc, vnorm, anorm])
+
+            # central curves log
+            append_curve_row(curve_csv, {
                 "epoch": epoch,
-                "val_loss": best_val_loss,
-                "mfcc_max_len": mfcc_max_len,
-            }, best_path)
-            print("Saved best ->", best_path)
+                "train_loss": train_loss,
+                "val_loss": val_loss,
+                "val_auc": val_auc,
+                "val_f1": val_f1,
+                "val_acc": val_acc,
+            })
 
-    print("Done. Best val loss:", best_val_loss)
-    print("Fusion log ->", log_path)
+            # save best
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_epoch = epoch
+                best_val_acc = val_acc
+                best_val_f1 = val_f1
+                best_val_auc = val_auc
+
+                torch.save({
+                    "model_state": model.state_dict(),
+                    "epoch": best_epoch,
+                    "val_loss": best_val_loss,
+                    "val_acc": best_val_acc,
+                    "val_f1": best_val_f1,
+                    "val_auc": best_val_auc,
+                    "mfcc_max_len": mfcc_max_len,
+                    "config": {
+                        "model": "multimodal_fusion",
+                        "epochs": epochs,
+                        "lr": lr,
+                        "batch_size": batch_size,
+                        "num_workers": num_workers,
+                        "mfcc_max_len": mfcc_max_len,
+                    }
+                }, best_path)
+                print("Saved best ->", best_path)
+
+        log_run(run_name, payload={
+            "task": "train",
+            "model": "multimodal_fusion",
+            "dataset": "FakeAVCeleb_v1.2",
+            "split": "train/val",
+            "metrics": {
+                "best_val_loss": best_val_loss,
+                "best_epoch": best_epoch,
+                "best_val_acc": best_val_acc,
+                "best_val_auc": best_val_auc,
+                "best_val_f1": best_val_f1,
+            },
+            "artifacts": [str(best_path), str(log_path), str(curve_csv)],
+            "notes": "Fusion baseline 5 epochs. Logs written to fusion_log.csv + central VerifAI logs.",
+        })
+
+        print("Done. Best val loss:", best_val_loss)
+        print("Fusion log ->", log_path)
+
+    except Exception as exc:
+        log_exception(run_name, exc, context={"script": "ml/train_av_fusion.py"})
+        raise
 
 
 if __name__ == "__main__":

@@ -1,0 +1,19 @@
+{
+  "project": "VerifAI",
+  "run_name": "xception_baseline",
+  "timestamp": "2026-02-22T11:07:38",
+  "exception_type": "FileNotFoundError",
+  "exception": "No frames found. Check DATA_ROOT=data\\interim\\frames\\FaceForensics++_C23 and that train/ and val/ contain images.",
+  "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\dajan\\OneDrive - University of Greenwich\\Desktop\\UniversityOfGreenwich\\3rd year\\COMP1682\\deepfake-framework\\ml\\train_xception.py\", line 101, in main\n    raise FileNotFoundError(\nFileNotFoundError: No frames found. Check DATA_ROOT=data\\interim\\frames\\FaceForensics++_C23 and that train/ and val/ contain images.\n",
+  "context": {
+    "script": "ml/train_xception.py"
+  },
+  "git_commit": "1b7dc666fe78be2c0445aea7526feaa7aeebf560",
+  "git_branch": "main",
+  "git_dirty": "M backend/__pycache__/main.cpython-312.pyc\n D experiments/logs/training_curves/xception_baseline.csv\n D experiments/logs/training_curves/xception_baseline_loss.png\n D experiments/logs/training_curves/xception_baseline_val_auc.png\n D experiments/logs/training_curves/xception_baseline_val_f1.png\n M experiments/results/fakeavceleb_audio_resnet_baseline/best_model.pt\n M experiments/results/fakeavceleb_av_fusion_v1/best_model.pt\n M experiments/results/fakeavceleb_av_fusion_v1/fusion_log.csv\n M ml/__pycache__/train.cpython-312.pyc\n M ml/__pycache__/train_audio_resnet.cpython-312.pyc\n M ml/__pycache__/train_av_fusion.cpython-312.pyc\n M ml/__pycache__/train_xception.cpython-312.pyc\n M ml/train_audio_resnet.py\n M ml/train_av_fusion.py\n M ml/train_xception.py\n?? backend/app/api/__pycache__/explain.cpython-312.pyc\n?? experiments/logs/runs/\n?? experiments/logs/training_curves/audio_resnet_baseline.csv\n?? experiments/logs/training_curves/audio_resnet_baseline_loss.png\n?? experiments/logs/training_curves/audio_resnet_baseline_val_auc.png\n?? experiments/logs/training_curves/audio_resnet_baseline_val_f1.png\n?? experiments/logs/training_curves/av_fusion_v1.csv\n?? experiments/logs/training_curves/av_fusion_v1_accuracy.png\n?? experiments/logs/training_curves/av_fusion_v1_loss.png\n?? experiments/logs/training_curves/av_fusion_v1_val_auc.png\n?? experiments/logs/training_curves/av_fusion_v1_val_f1.png\n?? scripts/__pycache__/",
+  "torch_version": "2.9.1+cpu",
+  "cuda_available": false,
+  "cuda_version": null,
+  "cudnn_version": null,
+  "gpu_name": null
+}

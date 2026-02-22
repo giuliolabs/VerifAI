@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "project": "VerifAI",
+    "run_name": "xception_baseline",
+    "timestamp": "2026-02-22T15:41:22",
+    "python": "3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cwd": "C:\\Users\\dajan\\OneDrive - University of Greenwich\\Desktop\\UniversityOfGreenwich\\3rd year\\COMP1682\\deepfake-framework",
+    "git_commit": "1b7dc666fe78be2c0445aea7526feaa7aeebf560",
+    "git_branch": "main",
+    "git_dirty": "M backend/__pycache__/main.cpython-312.pyc\n M experiments/logs/training_curves/xception_baseline.csv\n D experiments/logs/training_curves/xception_baseline_loss.png\n D experiments/logs/training_curves/xception_baseline_val_auc.png\n D experiments/logs/training_curves/xception_baseline_val_f1.png\n M experiments/results/fakeavceleb_audio_resnet_baseline/best_model.pt\n M experiments/results/fakeavceleb_av_fusion_v1/best_model.pt\n M experiments/results/fakeavceleb_av_fusion_v1/fusion_log.csv\n M experiments/results/ffpp_c23_xception_baseline/best_model.pt\n M ml/__pycache__/train.cpython-312.pyc\n M ml/__pycache__/train_audio_resnet.cpython-312.pyc\n M ml/__pycache__/train_av_fusion.cpython-312.pyc\n M ml/__pycache__/train_xception.cpython-312.pyc\n M ml/train_audio_resnet.py\n M ml/train_av_fusion.py\n M ml/train_xception.py\n?? backend/app/api/__pycache__/explain.cpython-312.pyc\n?? experiments/logs/errors/error_2026-02-22_11-07-38_xception_baseline.json\n?? experiments/logs/errors/error_2026-02-22_12-19-14_xception_baseline.json\n?? experiments/logs/errors/error_2026-02-22_12-27-52_xception_baseline.json\n?? experiments/logs/errors/error_2026-02-22_12-33-41_xception_baseline.json\n?? experiments/logs/errors/error_2026-02-22_12-36-16_xception_baseline.json\n?? experiments/logs/runs/\n?? experiments/logs/training_curves/audio_resnet_baseline.csv\n?? experiments/logs/training_curves/audio_resnet_baseline_loss.png\n?? experiments/logs/training_curves/audio_resnet_baseline_val_auc.png\n?? experiments/logs/training_curves/audio_resnet_baseline_val_f1.png\n?? experiments/logs/training_curves/av_fusion_v1.csv\n?? experiments/logs/training_curves/av_fusion_v1_accuracy.png\n?? experiments/logs/training_curves/av_fusion_v1_loss.png\n?? experiments/logs/training_curves/av_fusion_v1_val_auc.png\n?? experiments/logs/training_curves/av_fusion_v1_val_f1.png\n?? scripts/__pycache__/",
+    "torch_version": "2.9.1+cpu",
+    "cuda_available": false,
+    "cuda_version": null,
+    "cudnn_version": null,
+    "gpu_name": null
+  },
+  "payload": {
+    "task": "train",
+    "model": "xception",
+    "dataset": "FaceForensics++_C23",
+    "split": "train/val",
+    "seed": 42,
+    "metrics": {
+      "best_val_loss": 0.5253906188718712,
+      "best_epoch": 1,
+      "best_val_auc": 0.547850694534261,
+      "best_val_f1": 0.8824378508420209
+    },
+    "artifacts": [
+      "experiments\\results\\ffpp_c23_xception_baseline\\best_model.pt",
+      "experiments/logs/training_curves/xception_baseline.csv"
+    ],
+    "notes": "Frame folders use SAFE_ID from extractor. Labels joined via _id_map.csv + split CSV video_path."
+  }
+}

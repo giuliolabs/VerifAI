@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "project": "VerifAI",
+    "run_name": "av_fusion_v1",
+    "timestamp": "2026-02-22T03:07:25",
+    "python": "3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cwd": "C:\\Users\\dajan\\OneDrive - University of Greenwich\\Desktop\\UniversityOfGreenwich\\3rd year\\COMP1682\\deepfake-framework",
+    "git_commit": "1b7dc666fe78be2c0445aea7526feaa7aeebf560",
+    "git_branch": "main",
+    "git_dirty": "M backend/__pycache__/main.cpython-312.pyc\n D experiments/logs/training_curves/xception_baseline.csv\n D experiments/logs/training_curves/xception_baseline_loss.png\n D experiments/logs/training_curves/xception_baseline_val_auc.png\n D experiments/logs/training_curves/xception_baseline_val_f1.png\n M experiments/results/fakeavceleb_audio_resnet_baseline/best_model.pt\n M experiments/results/fakeavceleb_av_fusion_v1/best_model.pt\n M experiments/results/fakeavceleb_av_fusion_v1/fusion_log.csv\n M ml/__pycache__/train.cpython-312.pyc\n M ml/__pycache__/train_audio_resnet.cpython-312.pyc\n M ml/__pycache__/train_av_fusion.cpython-312.pyc\n M ml/__pycache__/train_xception.cpython-312.pyc\n M ml/train_audio_resnet.py\n M ml/train_av_fusion.py\n M ml/train_xception.py\n?? backend/app/api/__pycache__/explain.cpython-312.pyc\n?? experiments/logs/runs/\n?? experiments/logs/training_curves/audio_resnet_baseline.csv\n?? experiments/logs/training_curves/audio_resnet_baseline_loss.png\n?? experiments/logs/training_curves/audio_resnet_baseline_val_auc.png\n?? experiments/logs/training_curves/audio_resnet_baseline_val_f1.png\n?? experiments/logs/training_curves/av_fusion_v1.csv\n?? scripts/__pycache__/",
+    "torch_version": "2.9.1+cpu",
+    "cuda_available": false,
+    "cuda_version": null,
+    "cudnn_version": null,
+    "gpu_name": null
+  },
+  "payload": {
+    "task": "train",
+    "model": "multimodal_fusion",
+    "dataset": "FakeAVCeleb_v1.2",
+    "split": "train/val",
+    "metrics": {
+      "best_val_loss": 0.009713993431701713,
+      "best_epoch": 4,
+      "best_val_acc": 0.9971056439942113,
+      "best_val_auc": 0.9993483219289669,
+      "best_val_f1": 0.9984833164812943
+    },
+    "artifacts": [
+      "experiments\\results\\fakeavceleb_av_fusion_v1\\best_model.pt",
+      "experiments\\results\\fakeavceleb_av_fusion_v1\\fusion_log.csv",
+      "experiments/logs/training_curves/av_fusion_v1.csv"
+    ],
+    "notes": "Fusion baseline 5 epochs. Logs written to fusion_log.csv + central VerifAI logs."
+  }
+}
