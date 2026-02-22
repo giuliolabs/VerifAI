@@ -83,10 +83,9 @@ def _build_candidates(video_id: str, video_path_str: str) -> list[str]:
     video_name = Path(video_path_str).name if video_path_str else ""
     video_stem = Path(video_path_str).stem if video_path_str else ""
 
-    candidates = []
+    candidates = [video_id]
 
     # 1) CSV video_id as-is
-    candidates.append(video_id)
 
     # 2) If video_id includes extension like ".mp4", try without it
     if video_id.lower().endswith(".mp4"):
