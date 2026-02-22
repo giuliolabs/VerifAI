@@ -1,6 +1,0 @@
-sample_id,dataset,label,video_path,notes
-E01,FakeAVCeleb_v1.2,fake,data/raw/FakeAVCeleb_v1.2/FakeVideo-FakeAudio/African/men/id00076/00109_10_id00476_wavtolip.mp4,clear face
-E02,FakeAVCeleb_v1.2,fake,data/raw/FakeAVCeleb_v1.2/FakeVideo-FakeAudio/African/men/id00076/00109_12_id01856_wavtolip.mp4,different clip
-E03,Celeb-DF-v2,fake,data/raw/Celeb-DF-v2/Celeb-synthesis/id0_id16_0000.mp4,celeb synthesis
-E04,Celeb-DF-v2,real,data/raw/Celeb-DF-v2/Celeb-real/id0_0000.mp4,celeb real
-E05,Celeb-DF-v2,real,data/raw/Celeb-DF-v2/YouTube-real/00000.mp4,youtube real
