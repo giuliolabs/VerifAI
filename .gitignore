@@ -5,3 +5,4 @@ data/raw/DeeperForensics
 data/raw/FaceForensics++_C23
 data/raw/FakeAVCeleb_v1.2
 data/raw/Survey369
+/experiments/results/ffpp_c23_vit_baseline/best_model.pt
