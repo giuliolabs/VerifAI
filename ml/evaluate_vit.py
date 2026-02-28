@@ -153,7 +153,7 @@ def main() -> None:
 
     y_true_np = np.array(y_true)
     y_prob_np = np.array(y_prob)
-    y_pred_np = (y_prob_np >= 0.5).astype(int) # 0.5 best value
+    y_pred_np = (y_prob_np >= 0.5).astype(int)
 
     acc = accuracy_score(y_true_np, y_pred_np)
     f1 = f1_score(y_true_np, y_pred_np)
@@ -162,8 +162,8 @@ def main() -> None:
     except ValueError:
         auc = float("nan")
 
-    bal_acc = balanced_accuracy_score(y_true_np, y_pred_np)
-    mcc = matthews_corrcoef(y_true_np, y_pred_np)
+    balanced_accuracy_score(y_true_np, y_pred_np)
+    matthews_corrcoef(y_true_np, y_pred_np)
 
     cm = confusion_matrix(y_true_np, y_pred_np)
     rep = classification_report(y_true_np, y_pred_np, digits=4)
@@ -174,8 +174,6 @@ def main() -> None:
         f"Accuracy: {acc:.6f}",
         f"F1: {f1:.6f}",
         f"AUC: {auc:.6f}",
-        f"Balanced Accuracy: {bal_acc:.6f}",
-        f"MCC: {mcc:.6f}\n",
         "Confusion matrix:",
         str(cm),
         "\nClassification report:\n" + rep,
@@ -184,7 +182,6 @@ def main() -> None:
     out_report.write_text("\n".join(text), encoding="utf-8")
     print("\n".join(text))
     print("\nSaved report ->", out_report)
-
 
 if __name__ == "__main__":
     main()

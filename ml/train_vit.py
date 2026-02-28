@@ -189,18 +189,66 @@ def main() -> None:
     print("Train frames:", len(train_ds))
     print("Val frames:", len(val_ds))
 
-    train_loader = DataLoader(train_ds, batch_size=BATCH_TRAIN, shuffle=True, num_workers=NUM_WORKERS)
+    # ---- WeightedRandomSampler to balance classes per batch ----
+    from torch.utils.data import WeightedRandomSampler
+
+    labels = [label for _, label in train_ds.samples]
+    class_counts = np.bincount(np.array(labels, dtype=np.int64), minlength=2)
+    class_counts = np.maximum(class_counts, 1)
+    class_weights = 1.0 / class_counts
+    sample_weights = [class_weights[int(l)] for l in labels]
+
+    sampler = WeightedRandomSampler(
+        weights=torch.tensor(sample_weights, dtype=torch.double),
+        num_samples=len(sample_weights),
+        replacement=True,
+    )
+
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=BATCH_TRAIN,
+        sampler=sampler,
+        shuffle=False,
+        num_workers=NUM_WORKERS,
+    )
     val_loader = DataLoader(val_ds, batch_size=BATCH_VAL, shuffle=False, num_workers=NUM_WORKERS)
 
     model = build_vit_binary(pretrained=True, img_size=IMG_SIZE).to(device)
 
+    # ---- WARMUP: train classifier head only for 2 epochs ----
+    for param in model.parameters():
+        param.requires_grad = False
+
+    # Unfreeze classifier head (ViTBinaryClassifier has .head)
+    if hasattr(model, "head"):
+        for param in model.head.parameters():
+            param.requires_grad = True
+    else:
+        # fallback safety (should not happen)
+        for param in model.parameters():
+            param.requires_grad = True
+
+    warmup_epochs = 2
+
+    optimizer = torch.optim.AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=LR
+    )
+
     loss_fn = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
 
     best_val_loss = float("inf")
     curve_csv = f"experiments/logs/training_curves/{RUN_NAME}.csv"
 
     for epoch in range(1, EPOCHS + 1):
+
+        # ---- Unfreeze full model after warmup ----
+        if epoch == warmup_epochs + 1:
+            for param in model.parameters():
+                param.requires_grad = True
+            optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
+            print("[INFO] Unfroze full ViT for fine-tuning.")
+
         # ---- train ----
         model.train()
         train_loss_sum = 0.0
@@ -257,6 +305,8 @@ def main() -> None:
                         "epochs": EPOCHS,
                         "lr": LR,
                         "seed": SEED,
+                        "warmup_epochs": warmup_epochs,
+                        "sampler": "WeightedRandomSampler",
                     },
                 },
                 best_path,
