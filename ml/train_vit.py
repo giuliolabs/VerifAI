@@ -247,7 +247,7 @@ def main() -> None:
             for param in model.parameters():
                 param.requires_grad = True
             optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
-            print("[INFO] Unfroze full ViT for fine-tuning.")
+             # print("[INFO] Unfroze full ViT for fine-tuning.")
 
         # ---- train ----
         model.train()
