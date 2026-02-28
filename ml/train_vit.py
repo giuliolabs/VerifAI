@@ -35,7 +35,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from PIL import Image
 from tqdm import tqdm
-
+from torch.utils.data import WeightedRandomSampler
 from ml.models.video.vit import build_vit_binary
 from scripts.curve_writer import append_curve_row
 
@@ -45,9 +45,6 @@ from scripts.curve_writer import append_curve_row
 # -------------------------
 FRAMES_ROOT = Path("data/interim/frames/FaceForensics++_C23")
 SPLITS_DIR = Path("data/splits")
-
-TRAIN_SPLIT = "train"
-VAL_SPLIT = "val"
 
 TRAIN_CSV = SPLITS_DIR / "faceforensics++_c23_train.csv"
 VAL_CSV = SPLITS_DIR / "faceforensics++_c23_val.csv"
@@ -70,6 +67,18 @@ def set_seed(seed: int) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def compute_pos_weight_from_samples(samples: list[tuple[Path, int]]) -> float:
+    """
+    For BCEWithLogitsLoss(pos_weight=...):
+      pos_weight = (#negative / #positive)
+    """
+    n_pos = sum(1 for _, label in samples if int(label) == 1)
+    n_neg = sum(1 for _, label in samples if int(label) == 0)
+    if n_pos == 0:
+        return 1.0
+    return float(n_neg) / float(n_pos)
 
 
 def make_transforms(train: bool) -> transforms.Compose:
@@ -141,16 +150,17 @@ class FFPPHashedFrameDataset(Dataset):
             raise FileNotFoundError(f"Missing id map: {self.id_map_path}. Re-run extract_frames_from_csv.py")
 
         # mappings
-        video_path_to_label = read_split_labels(TRAIN_CSV if split == "train" else VAL_CSV)
+        split_csv = TRAIN_CSV if split == "train" else VAL_CSV
+        video_path_to_label = read_split_labels(split_csv)
         safe_to_vpath = read_id_map(self.id_map_path)
 
-        # Collect frame files & labels
+        # Collect frame files + labels
         self.samples: list[tuple[Path, int]] = []
 
         for safe_id, vpath in safe_to_vpath.items():
             if vpath not in video_path_to_label:
                 continue
-            label = video_path_to_label[vpath]
+            label = int(video_path_to_label[vpath])
             vid_folder = split_dir / safe_id
             if not vid_folder.exists():
                 continue
@@ -189,12 +199,17 @@ def main() -> None:
     print("Train frames:", len(train_ds))
     print("Val frames:", len(val_ds))
 
-    # ---- WeightedRandomSampler to balance classes per batch ----
-    from torch.utils.data import WeightedRandomSampler
+    # ---- class imbalance handling ----
+    pos_w = compute_pos_weight_from_samples(train_ds.samples)
+    print(f"[INFO] pos_weight (neg/pos) = {pos_w:.4f}")
+    loss_fn = nn.BCEWithLogitsLoss()
 
+    # ---- Weighted sampler to balance classes per batch ----
     labels = [label for _, label in train_ds.samples]
     class_counts = np.bincount(np.array(labels, dtype=np.int64), minlength=2)
     class_counts = np.maximum(class_counts, 1)
+
+    # weight per class: inverse frequency
     class_weights = 1.0 / class_counts
     sample_weights = [class_weights[int(l)] for l in labels]
 
@@ -207,7 +222,7 @@ def main() -> None:
     train_loader = DataLoader(
         train_ds,
         batch_size=BATCH_TRAIN,
-        sampler=sampler,
+        sampler=sampler,  # <-- use sampler instead of shuffle
         shuffle=False,
         num_workers=NUM_WORKERS,
     )
@@ -215,7 +230,7 @@ def main() -> None:
 
     model = build_vit_binary(pretrained=True, img_size=IMG_SIZE).to(device)
 
-    # ---- WARMUP: train classifier head only for 2 epochs ----
+    # ---- WARMUP: train classifier head only for 1 epoch ----
     for param in model.parameters():
         param.requires_grad = False
 
@@ -228,31 +243,29 @@ def main() -> None:
         for param in model.parameters():
             param.requires_grad = True
 
-    warmup_epochs = 2
+    warmup_epochs = 1
 
     optimizer = torch.optim.AdamW(
         filter(lambda p: p.requires_grad, model.parameters()),
         lr=LR
     )
 
-    loss_fn = nn.BCEWithLogitsLoss()
-
     best_val_loss = float("inf")
     curve_csv = f"experiments/logs/training_curves/{RUN_NAME}.csv"
 
     for epoch in range(1, EPOCHS + 1):
+        # ---- train ----
+        model.train()
+        train_loss_sum = 0.0
+        train_count = 0
 
         # ---- Unfreeze full model after warmup ----
         if epoch == warmup_epochs + 1:
             for param in model.parameters():
                 param.requires_grad = True
-            optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
-             # print("[INFO] Unfroze full ViT for fine-tuning.")
 
-        # ---- train ----
-        model.train()
-        train_loss_sum = 0.0
-        train_count = 0
+            optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
+            print("[INFO] Unfroze full ViT for fine-tuning.")
 
         for images, labels, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{EPOCHS} - train"):
             images = images.to(device)
@@ -305,8 +318,7 @@ def main() -> None:
                         "epochs": EPOCHS,
                         "lr": LR,
                         "seed": SEED,
-                        "warmup_epochs": warmup_epochs,
-                        "sampler": "WeightedRandomSampler",
+                        "pos_weight": pos_w,
                     },
                 },
                 best_path,
