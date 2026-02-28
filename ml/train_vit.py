@@ -201,7 +201,7 @@ def main() -> None:
 
     # ---- class imbalance handling ----
     pos_w = compute_pos_weight_from_samples(train_ds.samples)
-    print(f"[INFO] pos_weight (neg/pos) = {pos_w:.4f}")
+    # print(f"[INFO] pos_weight (neg/pos) = {pos_w:.4f}")
     loss_fn = nn.BCEWithLogitsLoss()
 
     # ---- Weighted sampler to balance classes per batch ----
@@ -265,7 +265,7 @@ def main() -> None:
                 param.requires_grad = True
 
             optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
-            print("[INFO] Unfroze full ViT for fine-tuning.")
+            # print("[INFO] Unfroze full ViT for fine-tuning.")
 
         for images, labels, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{EPOCHS} - train"):
             images = images.to(device)
