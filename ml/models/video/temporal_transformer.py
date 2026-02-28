@@ -164,7 +164,7 @@ def build_vit_feature_extractor(pretrained: bool = True, img_size: int = 224):
 
 
 def build_temporal_transformer_model(
-    backbone: str = "mobilenetv2",   # "mobilenetv2" or "vit"
+    backbone: str = "mobilenetv2",   # "mobilenetv2" / "vit"
     pretrained: bool = True,
     img_size: int = 224,
     num_layers: int = 2,

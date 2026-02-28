@@ -153,7 +153,7 @@ def main() -> None:
 
     y_true_np = np.array(y_true)
     y_prob_np = np.array(y_prob)
-    y_pred_np = (y_prob_np >= 0.5).astype(int)
+    y_pred_np = (y_prob_np >= 0.5).astype(int) # 0.5 best value
 
     acc = accuracy_score(y_true_np, y_pred_np)
     f1 = f1_score(y_true_np, y_pred_np)

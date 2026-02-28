@@ -144,7 +144,7 @@ class FFPPHashedFrameDataset(Dataset):
         video_path_to_label = read_split_labels(TRAIN_CSV if split == "train" else VAL_CSV)
         safe_to_vpath = read_id_map(self.id_map_path)
 
-        # Collect frame files + labels
+        # Collect frame files & labels
         self.samples: list[tuple[Path, int]] = []
 
         for safe_id, vpath in safe_to_vpath.items():

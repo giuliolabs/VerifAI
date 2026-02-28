@@ -83,7 +83,7 @@ def build_vit_feature_extractor(
     Returns:
         (feature_extractor, embed_dim)
     """
-    # num_classes=0 makes timm return features (no classification head)
+    # num_classes=0 makes timm return features [no classification head]
     backbone = timm.create_model(
         model_name,
         pretrained=pretrained,
