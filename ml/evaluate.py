@@ -54,7 +54,11 @@ def main():
         raise FileNotFoundError(f"Model not found: {model_path}. Run ml/train.py first.")
 
     test_dir = data_root / "test"
-    test_ds = FFPPFrameDataset(str(test_dir), transform=make_transforms())
+    test_ds = FFPPFrameDataset(
+        str(test_dir),
+        transform=make_transforms(),
+        mapping_file=r"data\interim\frames\FaceForensics++_C23\test\_id_map.csv"
+    )
     test_loader = DataLoader(test_ds, batch_size=64, shuffle=False, num_workers=2)
 
     model = build_model().to(device)

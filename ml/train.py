@@ -53,8 +53,17 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device:", device)
 
-    train_ds = FFPPFrameDataset(str(train_dir), transform=make_transforms(train=True))
-    val_ds = FFPPFrameDataset(str(val_dir), transform=make_transforms(train=False))
+    train_ds = FFPPFrameDataset(
+        str(train_dir),
+        transform=make_transforms(train=True),
+        mapping_file=r"data\interim\frames\FaceForensics++_C23\train\_id_map.csv"
+    )
+
+    val_ds = FFPPFrameDataset(
+        str(val_dir),
+        transform=make_transforms(train=False),
+        mapping_file=r"data\interim\frames\FaceForensics++_C23\val\_id_map.csv"
+    )
 
     print("Train frames:", len(train_ds))
     print("Val frames:", len(val_ds))
