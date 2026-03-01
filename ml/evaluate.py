@@ -1,14 +1,13 @@
 """
-Evaluate Baseline CNN (MobileNetV2) on FaceForensics++ C23 (video-level)
-Dependencies:
-    pip install torch torchvision
-    pip install scikit-learn tqdm pillow numpy
-Run:
-    python ml/evaluate.py
-Output:
-    experiments/results/ffpp_c23_mobilenet_baseline/test_report.txt
-"""
+Evaluate MobileNetV2 baseline on FaceForensics++ C23 (video-level)
 
+Run (from project root):
+    python ml/evaluate.py
+
+Outputs (in experiments/results/ffpp_c23_mobilenet_baseline):
+    - video_level_report.txt
+    - video_level_metrics.json
+"""
 
 import sys
 from pathlib import Path
@@ -21,18 +20,24 @@ import torch
 import numpy as np
 from torch.utils.data import DataLoader
 from torchvision import transforms
-from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, classification_report
 
 from ml.data_loader import FFPPFrameDataset
-from ml.models.video.mobilenet_baseline import build_mobilenet_v2_binary
+from ml.models.video.mobilenet_baseline import build_model
+from ml.metrics import (
+    aggregate_video_scores_mean,
+    compute_binary_metrics,
+    save_metrics_report,
+)
 
 
 def make_transforms():
     return transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+        ),
     ])
 
 
@@ -41,7 +46,6 @@ def main():
     data_root = Path("data/interim/frames/FaceForensics++_C23")
     out_dir = Path("experiments/results/ffpp_c23_mobilenet_baseline")
     model_path = out_dir / "best_model.pt"
-    report_path = out_dir / "test_report.txt"
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device:", device)
@@ -53,11 +57,12 @@ def main():
     test_ds = FFPPFrameDataset(str(test_dir), transform=make_transforms())
     test_loader = DataLoader(test_ds, batch_size=64, shuffle=False, num_workers=2)
 
-    model = build_mobilenet_v2_binary().to(device)
+    model = build_model().to(device)
     ckpt = torch.load(model_path, map_location=device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
 
+    # Accumulate frame probabilities per video, then average -> video score
     video_probs = defaultdict(list)
     video_label = {}
 
@@ -71,37 +76,36 @@ def main():
             if video_id not in video_label:
                 video_label[video_id] = int(label)
 
-    y_true = []
-    y_score = []
+    y_true, y_score, video_ids = aggregate_video_scores_mean(video_probs, video_label)
 
-    for video_id in sorted(video_probs.keys()):
-        y_true.append(video_label[video_id])
-        y_score.append(float(np.mean(video_probs[video_id])))
-
-    y_pred = [1 if p >= 0.5 else 0 for p in y_score]
-
-    acc = accuracy_score(y_true, y_pred)
-    auc = roc_auc_score(y_true, y_score) if len(set(y_true)) > 1 else float("nan")
-    cm = confusion_matrix(y_true, y_pred)
-    rep = classification_report(y_true, y_pred, digits=4)
+    metrics = compute_binary_metrics(
+        y_true=y_true,
+        y_score=y_score,
+        threshold=0.5,
+        include_curves=True,
+    )
 
     print("\nVIDEO-LEVEL RESULTS (FF++ C23 baseline)")
-    print("Num videos:", len(y_true))
-    print("Accuracy:", acc)
-    print("AUC:", auc)
-    print("Confusion matrix:\n", cm)
-    print("\nReport:\n", rep)
+    print("Num videos:", metrics.num_samples)
+    print("Accuracy:", metrics.accuracy)
+    print("ROC-AUC:", metrics.auc_roc)
+    print("Average precision:", metrics.ap)
+    print("Confusion matrix:\n", np.array(metrics.confusion_matrix))
+    print("\nReport:\n", metrics.report)
 
-    out_dir.mkdir(parents=True, exist_ok=True)
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write("VIDEO-LEVEL RESULTS (FF++ C23 baseline)\n")
-        f.write(f"Num videos: {len(y_true)}\n")
-        f.write(f"Accuracy: {acc}\n")
-        f.write(f"AUC: {auc}\n")
-        f.write(f"Confusion matrix:\n{cm}\n\n")
-        f.write(rep)
+    txt_path, json_path = save_metrics_report(
+        out_dir=out_dir,
+        name="video_level",
+        metrics=metrics,
+        extra={
+            "dataset": "FaceForensics++ C23",
+            "aggregation": "mean(frame_probs)",
+            "model_path": str(model_path),
+        },
+    )
 
-    print("\nSaved report ->", report_path)
+    print("\nSaved report ->", txt_path)
+    print("Saved metrics json ->", json_path)
 
 
 if __name__ == "__main__":

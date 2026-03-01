@@ -10,6 +10,9 @@ import torch.nn as nn
 from torchvision import models
 
 
+def build_model(**kwargs):
+    return build_mobilenet_v2_binary(**kwargs)
+
 def build_mobilenet_v2_binary():
     """
     Returns a MobileNetV2 model with a 1-logit binary classifier head.
