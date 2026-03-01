@@ -1,0 +1,22 @@
+TEMPORAL TRANSFORMER RESULTS (FF++ C23, backbone=mobilenetv2, T=5)
+
+Num samples: 712
+Accuracy: 0.567416
+F1: 0.707780
+AUC: 0.421611
+Balanced Accuracy: 0.434841
+MCC: -0.121007
+
+Confusion matrix:
+[[ 31 133]
+ [175 373]]
+
+Classification report:
+              precision    recall  f1-score   support
+
+           0     0.1505    0.1890    0.1676       164
+           1     0.7372    0.6807    0.7078       548
+
+    accuracy                         0.5674       712
+   macro avg     0.4438    0.4348    0.4377       712
+weighted avg     0.6020    0.5674    0.5833       712

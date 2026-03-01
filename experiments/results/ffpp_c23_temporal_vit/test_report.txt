@@ -1,0 +1,22 @@
+TEMPORAL TRANSFORMER RESULTS (FF++ C23, backbone=vit, T=5)
+
+Num samples: 712
+Accuracy: 0.370787
+F1: 0.352601
+AUC: 0.556080
+Balanced Accuracy: 0.544241
+MCC: 0.092749
+
+Confusion matrix:
+[[142  22]
+ [426 122]]
+
+Classification report:
+              precision    recall  f1-score   support
+
+           0     0.2500    0.8659    0.3880       164
+           1     0.8472    0.2226    0.3526       548
+
+    accuracy                         0.3708       712
+   macro avg     0.5486    0.5442    0.3703       712
+weighted avg     0.7097    0.3708    0.3607       712
