@@ -1,0 +1,24 @@
+VIDEO_LEVEL RESULTS
+Num samples: 712
+Accuracy: 0.6825842696629213
+ROC-AUC: 0.5542771942317963
+Average precision: 0.8087586224884716
+Threshold: 0.5
+Confusion matrix:
+[[ 43 121]
+ [105 443]]
+
+              precision    recall  f1-score   support
+
+           0     0.2905    0.2622    0.2756       164
+           1     0.7855    0.8084    0.7968       548
+
+    accuracy                         0.6826       712
+   macro avg     0.5380    0.5353    0.5362       712
+weighted avg     0.6715    0.6826    0.6767       712
+
+
+EXTRA
+dataset: FaceForensics++ C23
+aggregation: mean(frame_probs)
+model_path: experiments\results\ffpp_c23_mobilenet_baseline\best_model.pt
