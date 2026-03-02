@@ -18,28 +18,10 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torchvision import transforms
 from tqdm import tqdm
-
+from ml.augmentations import get_transforms
 from ml.data_loader import FFPPFrameDataset
 from ml.models.video.mobilenet_baseline import build_mobilenet_v2_binary
-
-
-def make_transforms(train: bool):
-    if train:
-        return transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.RandomHorizontalFlip(p=0.5),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225]),
-        ])
-    return transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                             std=[0.229, 0.224, 0.225]),
-    ])
 
 
 def main():
@@ -55,13 +37,13 @@ def main():
 
     train_ds = FFPPFrameDataset(
         str(train_dir),
-        transform=make_transforms(train=True),
+        transform=get_transforms(train=True),
         mapping_file=r"data\interim\frames\FaceForensics++_C23\train\_id_map.csv"
     )
 
     val_ds = FFPPFrameDataset(
         str(val_dir),
-        transform=make_transforms(train=False),
+        transform=get_transforms(train=False),
         mapping_file=r"data\interim\frames\FaceForensics++_C23\val\_id_map.csv"
     )
 
@@ -73,21 +55,27 @@ def main():
 
     model = build_mobilenet_v2_binary().to(device)
 
-    loss_fn = nn.BCEWithLogitsLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    # count labels in training set
+    num_fake = sum(1 for _, y, _ in train_ds.items if y == 1)
+    num_real = sum(1 for _, y, _ in train_ds.items if y == 0)
+
+    # weight positives so the model doesn't just predict "fake"
+    pos_weight = torch.tensor([num_real / max(num_fake, 1)], device=device)
+    loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5)
 
     best_val_loss = 10**9
     best_path = out_dir / "best_model.pt"
 
-    for epoch in range(1, 6):  # 5 epochs baseline
+    for epoch in range(1, 21):  # 20 epochs baseline
         # ---- train ----
         model.train()
         train_loss_sum = 0.0
         train_count = 0
 
-        for images, labels, video_ids in tqdm(train_loader, desc=f"Epoch {epoch}/5 - train"):
+        for images, labels, video_ids in tqdm(train_loader, desc=f"Epoch {epoch}/20 - train"):
             images = images.to(device)
-            labels = torch.tensor(labels, dtype=torch.float32).to(device)
+            labels = labels.float().to(device)
 
             logits = model(images).squeeze(1)
             loss = loss_fn(logits, labels)
@@ -108,7 +96,7 @@ def main():
         val_count = 0
 
         with torch.no_grad():
-            for images, labels, video_ids in tqdm(val_loader, desc=f"Epoch {epoch}/5 - val"):
+            for images, labels, video_ids in tqdm(val_loader, desc=f"Epoch {epoch}/20 - val"):
                 images = images.to(device)
                 labels = torch.tensor(labels, dtype=torch.float32).to(device)
 

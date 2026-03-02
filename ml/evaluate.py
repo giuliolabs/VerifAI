@@ -19,8 +19,7 @@ from collections import defaultdict
 import torch
 import numpy as np
 from torch.utils.data import DataLoader
-from torchvision import transforms
-
+from ml.augmentations import get_transforms
 from ml.data_loader import FFPPFrameDataset
 from ml.models.video.mobilenet_baseline import build_model
 from ml.metrics import (
@@ -28,17 +27,6 @@ from ml.metrics import (
     compute_binary_metrics,
     save_metrics_report,
 )
-
-
-def make_transforms():
-    return transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225],
-        ),
-    ])
 
 
 @torch.no_grad()
@@ -56,7 +44,7 @@ def main():
     test_dir = data_root / "test"
     test_ds = FFPPFrameDataset(
         str(test_dir),
-        transform=make_transforms(),
+        transform=get_transforms(train=False),
         mapping_file=r"data\interim\frames\FaceForensics++_C23\test\_id_map.csv"
     )
     test_loader = DataLoader(test_ds, batch_size=64, shuffle=False, num_workers=2)
