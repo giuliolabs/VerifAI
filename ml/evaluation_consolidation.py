@@ -1,5 +1,5 @@
 """
-Evaluation Consolidation Script (Upgraded)
+Evaluation Consolidation Script (Final)
 
 Scans experiments/results/* for model reports and metrics JSON,
 extracts key metrics, and builds:
@@ -51,9 +51,7 @@ def safe_float(x) -> Optional[float]:
 def detect_dataset(model_name: str, report_text: str) -> str:
     t = (model_name + "\n" + report_text).lower()
 
-    # strong hints from text
     if "faceforensics" in t or "ff++" in t or "ffpp" in t:
-        # sometimes includes C23/C40
         if "c23" in t:
             return "FaceForensics++ C23"
         if "c40" in t:
@@ -70,41 +68,41 @@ def detect_dataset(model_name: str, report_text: str) -> str:
         return "FakeAVCeleb"
 
     # fallback: guess from folder name
-    if "celebdf" in model_name.lower():
+    mn = model_name.lower()
+    if "celebdf" in mn:
         return "Celeb-DF v2"
-    if "deeper" in model_name.lower():
+    if "deeper" in mn:
         return "DeeperForensics"
-    if "fakeav" in model_name.lower():
+    if "fakeav" in mn:
         return "FakeAVCeleb"
-    if "ffpp" in model_name.lower() or "faceforensics" in model_name.lower():
+    if "ffpp" in mn or "faceforensics" in mn:
         return "FaceForensics++"
 
     return "Unknown"
 
 
 def detect_model_type(model_name: str, report_text: str) -> str:
-    t = (model_name + " " + report_text).lower()
+    """
+    Strict model type detection.
+    Order matters.
+    """
 
-    # explicit fusion
-    if "fusion" in t or "multimodal" in t or "av" in t and "audio" in t and "video" in t:
+    t = (model_name + " " + report_text).lower()
+    mn = model_name.lower()
+
+    # Explicit fusion models only
+    if "fusion" in mn or "multimodal" in mn:
         return "AV fusion"
 
-    # audio
-    audio_hints = ["mfcc", "wav", "audio", "mel", "spectrogram", "waveform", "torchaudio"]
-    if any(h in t for h in audio_hints):
-        # avoid false positives where "av" contains "a"
-        if "visual" not in t and "xception" not in t and "mobilenet" not in t and "vit" not in t:
-            return "Audio"
-        # if both audio & visual hints exist -> fusion
-        visual_hints = ["frame", "rgb", "xception", "mobilenet", "vit", "resnet", "efficientnet", "vision"]
-        if any(h in t for h in visual_hints):
-            return "AV fusion"
-        return "Audio"
-
-    # visual
-    visual_hints = ["frame", "rgb", "xception", "mobilenet", "vit", "efficientnet", "vision", "faceforensics"]
-    if any(h in t for h in visual_hints):
+    # Visual models
+    visual_backbones = ["xception", "mobilenet", "vit", "vision", "temporal"]
+    if any(v in mn for v in visual_backbones):
         return "Visual"
+
+    # Audio models
+    audio_keywords = ["mfcc", "wav", "audio", "mel", "spectrogram"]
+    if any(a in mn for a in audio_keywords):
+        return "Audio"
 
     return "Unknown"
 
@@ -112,37 +110,39 @@ def detect_model_type(model_name: str, report_text: str) -> str:
 def detect_backbone(model_name: str, report_text: str) -> str:
     t = (model_name + " " + report_text).lower()
 
-    # common backbones
     if "xception" in t:
         return "Xception"
     if "mobilenet" in t or "mobilenetv2" in t:
         return "MobileNetV2"
     if "vit" in t or "vision transformer" in t:
         return "ViT"
+    if "temporal" in t and "vit" in t:
+        return "Temporal ViT"
+    if "temporal" in t and "mobilenet" in t:
+        return "Temporal MobileNetV2"
+
     if "resnet" in t:
-        # try to detect depth
         m = re.search(r"resnet\s*([0-9]{2,3})", t)
         return f"ResNet{m.group(1)}" if m else "ResNet"
+
+    if "mfcc" in t and ("cnn" in t or "conv" in t):
+        return "MFCC-CNN"
+
+    if "wav_encoder" in t or "wav encoder" in t or "wave encoder" in t:
+        return "WAV encoder"
+
     if "efficientnet" in t:
         return "EfficientNet"
+
     if "wav2vec" in t:
         return "Wav2Vec"
     if "hubert" in t:
         return "HuBERT"
 
-    # generic audio encoder
-    if "wav encoder" in t or "wave encoder" in t:
-        return "WAV encoder"
-
     return "Unknown"
 
 
 def find_report_and_metrics_json(folder: Path) -> Tuple[Optional[Path], Optional[Path]]:
-    """
-    Finds the best available text report + metrics JSON inside a model folder.
-    We prioritize JSON if present for reliable metrics.
-    """
-    # common names you already generate
     report_candidates = [
         folder / "test_report.txt",
         folder / "video_level_report.txt",
@@ -157,7 +157,6 @@ def find_report_and_metrics_json(folder: Path) -> Tuple[Optional[Path], Optional
     report_path = next((p for p in report_candidates if p.exists()), None)
     json_path = next((p for p in json_candidates if p.exists()), None)
 
-    # also search for *metrics.json and *report.txt if not found
     if report_path is None:
         txts = sorted(folder.glob("**/*report*.txt"))
         report_path = txts[0] if txts else None
@@ -170,10 +169,6 @@ def find_report_and_metrics_json(folder: Path) -> Tuple[Optional[Path], Optional
 
 
 def parse_from_json(json_path: Path) -> Dict[str, Optional[float]]:
-    """
-    Tries to parse metrics from JSON (best case).
-    Supports different key names gracefully.
-    """
     data = json.loads(json_path.read_text(encoding="utf-8"))
 
     def pick(*keys):
@@ -194,15 +189,10 @@ def parse_from_json(json_path: Path) -> Dict[str, Optional[float]]:
 
 
 def parse_from_text(report_text: str) -> Dict[str, Optional[float]]:
-    """
-    Parses what we can from plain text reports.
-    """
-    # common patterns you showed in logs
     patterns = {
         "accuracy": r"Accuracy:\s*([0-9.]+)",
         "auc": r"ROC-AUC:\s*([0-9.]+)",
         "ap": r"Average precision:\s*([0-9.]+)",
-        # sklearn classification report line
         "f1_weighted": r"weighted avg\s+[0-9.]+\s+[0-9.]+\s+([0-9.]+)",
         "f1_macro": r"macro avg\s+[0-9.]+\s+[0-9.]+\s+([0-9.]+)",
     }
@@ -212,7 +202,6 @@ def parse_from_text(report_text: str) -> Dict[str, Optional[float]]:
         m = re.search(pat, report_text)
         out[key] = safe_float(m.group(1)) if m else None
 
-    # Balanced accuracy + MCC might not be printed; leave None unless present
     m_bal = re.search(r"Balanced\s*Acc(?:uracy)?:\s*([0-9.]+)", report_text, re.IGNORECASE)
     out["balanced_accuracy"] = safe_float(m_bal.group(1)) if m_bal else None
 
@@ -231,14 +220,14 @@ def merge_metrics(primary: Dict[str, Optional[float]], fallback: Dict[str, Optio
 
 
 def discover_models():
-    """
-    Looks one level deep: experiments/results/<model_folder>/
-    """
     models = []
     for folder in sorted(RESULTS_ROOT.iterdir()):
         if not folder.is_dir():
             continue
         if folder.name == "_summary":
+            continue
+        # optional skip: folders that are not experiments
+        if folder.name.lower() in {"preprocessing_checks"}:
             continue
         models.append(folder)
     return models
@@ -269,9 +258,12 @@ def write_csv(rows):
 
 
 def write_markdown(rows):
-    lines = ["# Model Comparison Summary\n", "Auto-generated from `experiments/results/*`.\n",
-             "| Model | Dataset | Type | Backbone | Acc | Bal Acc | F1(w) | F1(m) | AUC | AP | MCC |",
-             "|------|---------|------|----------|-----|---------|-------|-------|-----|----|-----|"]
+    lines = [
+        "# Model Comparison Summary\n",
+        "Auto-generated from `experiments/results/*`.\n",
+        "| Model | Dataset | Type | Backbone | Acc | Bal Acc | F1(w) | F1(m) | AUC | AP | MCC |",
+        "|------|---------|------|----------|-----|---------|-------|-------|-----|----|-----|",
+    ]
 
     for r in rows:
         (
@@ -301,7 +293,6 @@ def main():
         report_path, json_path = find_report_and_metrics_json(folder)
 
         if report_path is None and json_path is None:
-            # nothing to summarize
             continue
 
         report_text = ""
