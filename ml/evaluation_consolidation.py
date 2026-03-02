@@ -257,13 +257,190 @@ def write_csv(rows):
             writer.writerow(r)
 
 
+def sort_rows_by_metric(rows, metric_index: int, desc: bool = True):
+    """
+    Sort rows by a metric column index (float or None).
+    None values always go last.
+    """
+    def key_fn(r):
+        v = r[metric_index]
+        return -v if (v is not None and desc) else (v if v is not None else float("inf"))
+    # safer: separate None handling explicitly
+    rows_with = [r for r in rows if r[metric_index] is not None]
+    rows_none = [r for r in rows if r[metric_index] is None]
+    rows_with_sorted = sorted(rows_with, key=lambda r: r[metric_index], reverse=desc)
+    return rows_with_sorted + rows_none
+
+
+def best_row(rows, metric_index: int):
+    """Return best row by metric_index, ignoring None. If all None, return None."""
+    candidates = [r for r in rows if r[metric_index] is not None]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda r: r[metric_index])
+
+
+def group_by_dataset(rows):
+    """
+    rows schema:
+      0 model
+      1 dataset
+      2 model_type
+      3 backbone
+      4 accuracy
+      5 balanced_accuracy
+      6 f1_weighted
+      7 f1_macro
+      8 auc
+      9 ap
+      10 mcc
+      11 report_path
+      12 json_path
+    """
+    groups = {}
+    for r in rows:
+        ds = r[1]
+        groups.setdefault(ds, []).append(r)
+    return groups
+
+
+def is_visual(row) -> bool:
+    return (row[2] or "").strip().lower() == "visual"
+
+
+def short_row_ref(row) -> str:
+    """Compact one-line reference for summary bullets."""
+    model, dataset, model_type, backbone = row[0], row[1], row[2], row[3]
+    acc, bal, mcc = row[4], row[5], row[10]
+    return f"**{model}** ({dataset}) — Type: {model_type}, Backbone: {backbone}, Acc={fmt(acc)}, BalAcc={fmt(bal)}, MCC={fmt(mcc)}"
+
+
+def reliability_flags(row) -> list[str]:
+    """
+    Flags common imbalance issues:
+    - High acc but bal acc ~0.50
+    - MCC ~0 (no real signal)
+    """
+    flags = []
+    acc = row[4]
+    bal = row[5]
+    mcc = row[10]
+
+    if acc is not None and bal is not None:
+        if acc >= 0.80 and bal <= 0.55:
+            flags.append("High Acc but low BalAcc (possible class imbalance bias)")
+    if mcc is not None:
+        if abs(mcc) < 0.05:
+            flags.append("MCC≈0 (weak correlation / unreliable)")
+    return flags
+
+
 def write_markdown(rows):
-    lines = [
-        "# Model Comparison Summary\n",
-        "Auto-generated from `experiments/results/*`.\n",
-        "| Model | Dataset | Type | Backbone | Acc | Bal Acc | F1(w) | F1(m) | AUC | AP | MCC |",
-        "|------|---------|------|----------|-----|---------|-------|-------|-----|----|-----|",
-    ]
+    # ---- sort once for global ranking ----
+    rows_by_acc = sort_rows_by_metric(rows, metric_index=4, desc=True)
+    best_overall = best_row(rows, metric_index=4)
+
+    # ---- dataset group summaries ----
+    ds_groups = group_by_dataset(rows)
+
+    # Best per dataset (any type) by Accuracy
+    best_per_ds = {}
+    best_visual_per_ds = {}
+
+    for ds, ds_rows in ds_groups.items():
+        best_per_ds[ds] = best_row(ds_rows, metric_index=4)
+
+        visual_rows = [r for r in ds_rows if is_visual(r)]
+        best_visual_per_ds[ds] = best_row(visual_rows, metric_index=4) if visual_rows else None
+
+    # Optional additional rankings (real-world useful)
+    rows_by_balacc = sort_rows_by_metric(rows, metric_index=5, desc=True)
+    rows_by_mcc = sort_rows_by_metric(rows, metric_index=10, desc=True)
+
+    lines = []
+    lines.append("# Model Comparison Summary\n")
+    lines.append("Auto-generated from `experiments/results/*`.\n")
+
+    # ---- Executive summary (the high-scoring part) ----
+    lines.append("## Executive summary\n")
+
+    if best_overall:
+        lines.append(f"- **Best overall (by Accuracy):** {short_row_ref(best_overall)}")
+        flags = reliability_flags(best_overall)
+        if flags:
+            for fl in flags:
+                lines.append(f"  - {fl}")
+    else:
+        lines.append("- **Best overall (by Accuracy):** N/A")
+
+    lines.append("\n### Best model per dataset (by Accuracy)\n")
+    for ds in sorted(best_per_ds.keys()):
+        r = best_per_ds[ds]
+        if r:
+            lines.append(f"- **{ds}:** {short_row_ref(r)}")
+            flags = reliability_flags(r)
+            if flags:
+                for fl in flags:
+                    lines.append(f"  - {fl}")
+        else:
+            lines.append(f"- **{ds}:** N/A")
+
+    lines.append("\n### Best visual model per dataset (by Accuracy)\n")
+    for ds in sorted(best_visual_per_ds.keys()):
+        r = best_visual_per_ds[ds]
+        if r:
+            lines.append(f"- **{ds}:** {short_row_ref(r)}")
+            flags = reliability_flags(r)
+            if flags:
+                for fl in flags:
+                    lines.append(f"  - {fl}")
+        else:
+            lines.append(f"- **{ds}:** N/A (no visual models detected)")
+
+    # ---- Global rankings ----
+    lines.append("\n## Global ranking\n")
+    lines.append("### Ranking by Accuracy\n")
+    for i, r in enumerate(rows_by_acc, start=1):
+        lines.append(f"{i}. {short_row_ref(r)}")
+        flags = reliability_flags(r)
+        if flags:
+            for fl in flags:
+                lines.append(f"   - {fl}")
+
+    # ---- Real-world deployment rankings ----
+    # Balanced Acc helps if dataset is imbalanced; MCC is a strong reliability metric.
+    lines.append("\n### Ranking by Balanced Accuracy (if available)\n")
+    any_balacc = any(r[5] is not None for r in rows)
+    if not any_balacc:
+        lines.append("- No Balanced Accuracy values found in reports/metrics JSON.")
+    else:
+        shown = 0
+        for i, r in enumerate(rows_by_balacc, start=1):
+            if r[5] is None:
+                continue
+            lines.append(f"{i}. {short_row_ref(r)}")
+            shown += 1
+        if shown == 0:
+            lines.append("- No Balanced Accuracy values found in usable rows.")
+
+    lines.append("\n### Ranking by MCC (if available)\n")
+    any_mcc = any(r[10] is not None for r in rows)
+    if not any_mcc:
+        lines.append("- No MCC values found in reports/metrics JSON.")
+    else:
+        shown = 0
+        for i, r in enumerate(rows_by_mcc, start=1):
+            if r[10] is None:
+                continue
+            lines.append(f"{i}. {short_row_ref(r)}")
+            shown += 1
+        if shown == 0:
+            lines.append("- No MCC values found in usable rows.")
+
+    # ---- Full table ----
+    lines.append("\n## Full comparison table\n")
+    lines.append("| Model | Dataset | Type | Backbone | Acc | Bal Acc | F1(w) | F1(m) | AUC | AP | MCC |")
+    lines.append("|------|---------|------|----------|-----|---------|-------|-------|-----|----|-----|")
 
     for r in rows:
         (
