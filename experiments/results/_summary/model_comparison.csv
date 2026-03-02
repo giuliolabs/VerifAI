@@ -1,0 +1,10 @@
+Model,Dataset,Model type,Backbone,Accuracy,Balanced Acc,F1 (weighted),F1 (macro),ROC-AUC,AP,MCC,Report path,Metrics json path
+fakeavceleb_audio_resnet_baseline,FakeAVCeleb,AV fusion,ResNet18,0.967229,,0.9603,0.7648,,,,experiments\results\fakeavceleb_audio_resnet_baseline\test_report.txt,
+fakeavceleb_av_fusion_v1,FakeAVCeleb,AV fusion,Unknown,0.999036,,0.999,0.9952,,,,experiments\results\fakeavceleb_av_fusion_v1\test_report.txt,
+fakeavceleb_wav_encoder_baseline,FakeAVCeleb,AV fusion,Unknown,0.947952,0.5,0.9226,0.4866,,,0.0,experiments\results\fakeavceleb_wav_encoder_baseline\test_report.txt,
+ffpp_c23_mobilenet_baseline,FaceForensics++ C23,AV fusion,MobileNetV2,0.40870786516853935,,0.6776,0.4898,0.44960610646252447,0.7402324245919939,,experiments\results\ffpp_c23_mobilenet_baseline\test_report.txt,experiments\results\ffpp_c23_mobilenet_baseline\video_level_metrics.json
+ffpp_c23_temporal_mobilenetv2,FaceForensics++ C23,AV fusion,MobileNetV2,0.567416,0.434841,0.5833,0.4377,,,-0.121007,experiments\results\ffpp_c23_temporal_mobilenetv2\test_report.txt,
+ffpp_c23_temporal_vit,FaceForensics++ C23,AV fusion,ViT,0.370787,0.544241,0.3607,0.3703,,,0.092749,experiments\results\ffpp_c23_temporal_vit\test_report.txt,
+ffpp_c23_vit_baseline,FaceForensics++ C23,AV fusion,ViT,0.687079,,0.6578,0.482,,,,experiments\results\ffpp_c23_vit_baseline\test_report.txt,
+ffpp_c23_xception_baseline,FaceForensics++ C23,AV fusion,Xception,0.7457865168539326,,0.7162,0.565,,,,experiments\results\ffpp_c23_xception_baseline\test_report.txt,
+preprocessing_checks,DeeperForensics,Audio,Unknown,,,,,,,,experiments\results\preprocessing_checks\integrity_report.txt,
