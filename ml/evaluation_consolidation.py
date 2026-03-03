@@ -87,7 +87,7 @@ def detect_model_type(model_name: str, report_text: str) -> str:
     Order matters.
     """
 
-    t = (model_name + " " + report_text).lower()
+    (model_name + " " + report_text).lower()
     mn = model_name.lower()
 
     # Explicit fusion models only
@@ -262,9 +262,6 @@ def sort_rows_by_metric(rows, metric_index: int, desc: bool = True):
     Sort rows by a metric column index (float or None).
     None values always go last.
     """
-    def key_fn(r):
-        v = r[metric_index]
-        return -v if (v is not None and desc) else (v if v is not None else float("inf"))
     # safer: separate None handling explicitly
     rows_with = [r for r in rows if r[metric_index] is not None]
     rows_none = [r for r in rows if r[metric_index] is None]
@@ -357,12 +354,9 @@ def write_markdown(rows):
     rows_by_balacc = sort_rows_by_metric(rows, metric_index=5, desc=True)
     rows_by_mcc = sort_rows_by_metric(rows, metric_index=10, desc=True)
 
-    lines = []
-    lines.append("# Model Comparison Summary\n")
-    lines.append("Auto-generated from `experiments/results/*`.\n")
+    lines = ["# Model Comparison Summary\n", "Auto-generated from `experiments/results/*`.\n", "## Executive summary\n"]
 
     # ---- Executive summary (the high-scoring part) ----
-    lines.append("## Executive summary\n")
 
     if best_overall:
         lines.append(f"- **Best overall (by Accuracy):** {short_row_ref(best_overall)}")
