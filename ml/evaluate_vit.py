@@ -1,13 +1,17 @@
 """
 Evaluate ViT baseline on FaceForensics++ C23 frames (hashed folders).
 
-Outputs:
-- Accuracy, F1, AUC
-- Balanced Accuracy, MCC
-- Confusion matrix
-- Classification report
-- Saved report:
+Writes consistent metrics for consolidation:
+- Accuracy
+- Balanced Accuracy
+- F1 (from sklearn report)
+- ROC-AUC
+- Average Precision (AP)
+- MCC
+- Confusion matrix + classification report
+- Saves:
     experiments/results/ffpp_c23_vit_baseline/test_report.txt
+    experiments/results/ffpp_c23_vit_baseline/test_metrics.json
 
 Run:
     python -m ml.evaluate_vit
@@ -27,13 +31,8 @@ from torchvision import transforms
 from PIL import Image
 from tqdm import tqdm
 
-from sklearn.metrics import (
-    accuracy_score, f1_score, roc_auc_score,
-    confusion_matrix, classification_report,
-    balanced_accuracy_score, matthews_corrcoef
-)
-
 from ml.models.video.vit import build_vit_binary
+from ml.metrics import compute_binary_metrics, save_metrics_report
 
 
 FRAMES_ROOT = Path("data/interim/frames/FaceForensics++_C23")
@@ -124,9 +123,11 @@ class FFPPHashedFrameDataset(Dataset):
         return x, y, str(img_path)
 
 
+@torch.no_grad()
 def main() -> None:
-    out_report = OUT_DIR / "test_report.txt"
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    if not CKPT_PATH.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {CKPT_PATH}")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device:", device)
@@ -140,48 +141,50 @@ def main() -> None:
     model.eval()
 
     y_true: list[int] = []
-    y_prob: list[float] = []
+    y_score: list[float] = []
 
-    with torch.no_grad():
-        for x, y, _ in tqdm(loader, desc="Evaluating"):
-            x = x.to(device)
-            logits = model(x).squeeze(1)
-            probs = torch.sigmoid(logits).cpu().numpy()
+    for x, y, _ in tqdm(loader, desc="Evaluating"):
+        x = x.to(device)
+        logits = model(x).squeeze(1)
+        probs = torch.sigmoid(logits).cpu().numpy()
 
-            y_true.extend(y.numpy().astype(int).tolist())
-            y_prob.extend(probs.tolist())
+        y_true.extend([int(v) for v in y.cpu().numpy().tolist()])
+        y_score.extend([float(p) for p in probs.tolist()])
 
-    y_true_np = np.array(y_true)
-    y_prob_np = np.array(y_prob)
-    y_pred_np = (y_prob_np >= 0.5).astype(int)
+    metrics = compute_binary_metrics(
+        y_true=y_true,
+        y_score=y_score,
+        threshold=0.5,
+        include_curves=True,
+    )
 
-    acc = accuracy_score(y_true_np, y_pred_np)
-    f1 = f1_score(y_true_np, y_pred_np)
-    try:
-        auc = roc_auc_score(y_true_np, y_prob_np)
-    except ValueError:
-        auc = float("nan")
+    print("\nVIT RESULTS (FaceForensics++ C23 frame baseline)")
+    print("Checkpoint:", CKPT_PATH)
+    print("Num samples:", metrics.num_samples)
+    print("Accuracy:", metrics.accuracy)
+    print("Balanced accuracy:", getattr(metrics, "balanced_accuracy", None))
+    print("ROC-AUC:", metrics.auc_roc)
+    print("Average precision:", metrics.ap)
+    print("MCC:", getattr(metrics, "mcc", None))
+    print("Confusion matrix:\n", np.array(metrics.confusion_matrix))
+    print("\nReport:\n", metrics.report)
 
-    balanced_accuracy_score(y_true_np, y_pred_np)
-    matthews_corrcoef(y_true_np, y_pred_np)
+    txt_path, json_path = save_metrics_report(
+        out_dir=OUT_DIR,
+        name="test",
+        metrics=metrics,
+        extra={
+            "dataset": "FaceForensics++ C23",
+            "model": "ViT frame baseline",
+            "img_size": IMG_SIZE,
+            "threshold": 0.5,
+            "checkpoint": str(CKPT_PATH),
+        },
+    )
 
-    cm = confusion_matrix(y_true_np, y_pred_np)
-    rep = classification_report(y_true_np, y_pred_np, digits=4)
+    print("\nSaved report ->", txt_path)
+    print("Saved metrics json ->", json_path)
 
-    text = [
-        "VIT RESULTS (FaceForensics++ C23 frame baseline)\n",
-        f"Num samples: {len(y_true_np)}",
-        f"Accuracy: {acc:.6f}",
-        f"F1: {f1:.6f}",
-        f"AUC: {auc:.6f}",
-        "Confusion matrix:",
-        str(cm),
-        "\nClassification report:\n" + rep,
-    ]
-
-    out_report.write_text("\n".join(text), encoding="utf-8")
-    print("\n".join(text))
-    print("\nSaved report ->", out_report)
 
 if __name__ == "__main__":
     main()

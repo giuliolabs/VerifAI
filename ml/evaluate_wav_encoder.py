@@ -1,15 +1,22 @@
 """
-Evaluate Audio-Only WAV->1D CNN encoder model.
+Evaluate Audio-Only WAV->1D CNN encoder model (FakeAVCeleb v1.2).
 
-Outputs:
-- Accuracy, F1, AUC
-- Confusion matrix
-- Classification report
-- Saved report:
+Writes consistent metrics for consolidation:
+- Accuracy
+- Balanced Accuracy
+- F1 (from sklearn report)
+- ROC-AUC
+- Average Precision (AP)
+- MCC
+- Confusion matrix + classification report
+- Saves:
     experiments/results/fakeavceleb_wav_encoder_baseline/test_report.txt
+    experiments/results/fakeavceleb_wav_encoder_baseline/test_metrics.json
+    experiments/results/fakeavceleb_wav_encoder_baseline/predictions.csv
 
-Dependencies:
-    pip install torch numpy pandas scikit-learn tqdm soundfile
+Run:
+    python -m ml.evaluate_wav_encoder
+(or whatever module name you use for this file)
 """
 
 from __future__ import annotations
@@ -17,19 +24,16 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
-from sklearn.metrics import balanced_accuracy_score, matthews_corrcoef
+
 import csv
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-from sklearn.metrics import (
-    accuracy_score, f1_score, roc_auc_score,
-    confusion_matrix, classification_report
-)
 
 from ml.wav_data_loader import WavDataset
 from ml.models.audio.wav_encoder import build_wav_binary_classifier
+from ml.metrics import compute_binary_metrics, save_metrics_report
 
 
 def _torch_load_compat(path: Path, device: str):
@@ -43,21 +47,28 @@ def _torch_load_compat(path: Path, device: str):
         return torch.load(path, map_location=device)
 
 
+@torch.no_grad()
 def main() -> None:
     test_csv = "data/splits/fakeavceleb_test.csv"
     wav_test_root = "data/interim/audio/FakeAVCeleb_v1.2/test"
 
     ckpt_path = Path("experiments/results/fakeavceleb_wav_encoder_baseline/best_model.pt")
+    if not ckpt_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
+
     out_dir = ckpt_path.parent
-    out_report = out_dir / "test_report.txt"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    preds_csv = out_dir / "predictions.csv"
 
     sample_rate = 16000
     seconds = 3
-    strict_sr = False  # set True if you know all wav files are 16kHz
+    strict_sr = False  # True only if you KNOW all wav files are exactly 16kHz
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device:", device)
 
+    # ---- data ----
     ds = WavDataset(
         split_csv=test_csv,
         wav_root=wav_test_root,
@@ -67,6 +78,7 @@ def main() -> None:
     )
     loader = DataLoader(ds, batch_size=32, shuffle=False, num_workers=0)
 
+    # ---- model ----
     model = build_wav_binary_classifier(
         sample_rate=sample_rate,
         embedding_dim=256,
@@ -80,59 +92,63 @@ def main() -> None:
     model.eval()
 
     y_true: list[int] = []
-    y_prob: list[float] = []
+    y_score: list[float] = []
 
-    with torch.no_grad():
-        for x, y, _ in tqdm(loader, desc="Evaluating"):
-            x = x.to(device)                 # [B,1,T]
-            logits = model(x).squeeze(1)     # [B]
-            probs = torch.sigmoid(logits).cpu().numpy()
+    # ---- inference ----
+    for x, y, _ in tqdm(loader, desc="Evaluating"):
+        x = x.to(device)              # [B,1,T]
+        logits = model(x).squeeze(1)  # [B]
+        probs = torch.sigmoid(logits).detach().cpu().numpy()
 
-            y_true.extend(y.numpy().astype(int).tolist())
-            y_prob.extend(probs.tolist())
+        y_true.extend([int(v) for v in y.cpu().numpy().tolist()])
+        y_score.extend([float(p) for p in probs.tolist()])
 
-    y_true_np = np.array(y_true)
-    y_prob_np = np.array(y_prob)
-    y_pred_np = (y_prob_np >= 0.5).astype(int)
+    # ---- metrics (single source of truth) ----
+    metrics = compute_binary_metrics(
+        y_true=y_true,
+        y_score=y_score,
+        threshold=0.5,
+        include_curves=True,  # enables ROC-AUC + AP reliably
+    )
 
-    bal_acc = balanced_accuracy_score(y_true_np, y_pred_np)
-    mcc = matthews_corrcoef(y_true_np, y_pred_np)
-
-    preds_csv = out_dir / "predictions.csv"
+    # ---- save per-sample predictions ----
+    y_pred = (np.array(y_score) >= 0.5).astype(int).tolist()
     with preds_csv.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["index", "label", "prob_fake", "pred"])
-        for i, (yt, yp, yhat) in enumerate(zip(y_true_np.tolist(), y_prob_np.tolist(), y_pred_np.tolist())):
+        for i, (yt, yp, yhat) in enumerate(zip(y_true, y_score, y_pred)):
             writer.writerow([i, yt, f"{yp:.6f}", yhat])
 
-    acc = accuracy_score(y_true_np, y_pred_np)
-    f1 = f1_score(y_true_np, y_pred_np)
+    # ---- print + save report/json ----
+    print("\nAUDIO-ONLY RESULTS (FakeAVCeleb WAV->1D CNN baseline)")
+    print("Checkpoint:", ckpt_path)
+    print("Num samples:", metrics.num_samples)
+    print("Accuracy:", metrics.accuracy)
+    print("Balanced accuracy:", getattr(metrics, "balanced_accuracy", None))
+    print("ROC-AUC:", metrics.auc_roc)
+    print("Average precision:", metrics.ap)
+    print("MCC:", getattr(metrics, "mcc", None))
+    print("Confusion matrix:\n", np.array(metrics.confusion_matrix))
+    print("\nReport:\n", metrics.report)
+    print("\nPredictions CSV:", preds_csv)
 
-    try:
-        auc = roc_auc_score(y_true_np, y_prob_np)
-    except ValueError:
-        auc = float("nan")
+    txt_path, json_path = save_metrics_report(
+        out_dir=out_dir,
+        name="test",
+        metrics=metrics,
+        extra={
+            "dataset": "FakeAVCeleb v1.2",
+            "model": "WAV->1D CNN baseline",
+            "sample_rate": sample_rate,
+            "seconds": seconds,
+            "threshold": 0.5,
+            "checkpoint": str(ckpt_path),
+            "predictions_csv": str(preds_csv),
+        },
+    )
 
-    cm = confusion_matrix(y_true_np, y_pred_np)
-    report = classification_report(y_true_np, y_pred_np, digits=4)
-
-    text = [
-        "AUDIO-ONLY RESULTS (FakeAVCeleb WAV->1D CNN baseline)\n",
-        f"Num samples: {len(y_true_np)}",
-        f"Accuracy: {acc:.6f}",
-        f"F1: {f1:.6f}",
-        f"AUC: {auc:.6f}",
-        f"Balanced Accuracy: {bal_acc:.6f}",
-        f"MCC: {mcc:.6f}",
-        f"Predictions CSV: {preds_csv}\n",
-        "Confusion matrix:",
-        str(cm),
-        "\nClassification report:\n" + report,
-    ]
-
-    out_report.write_text("\n".join(text), encoding="utf-8")
-    print("\n".join(text))
-    print("\nSaved report ->", out_report)
+    print("\nSaved report ->", txt_path)
+    print("Saved metrics json ->", json_path)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,18 @@
 """
 Evaluate Temporal Transformer (T=5) on FF++ C23 test split.
 
+Adds consistent metrics for consolidation:
+- Accuracy
+- Balanced Accuracy
+- F1 (macro/weighted in sklearn report string)
+- ROC-AUC
+- Average Precision (AP)
+- MCC
+- Confusion matrix + classification report
+- Saves:
+    experiments/results/ffpp_c23_temporal_<backbone>/test_report.txt
+    experiments/results/ffpp_c23_temporal_<backbone>/test_metrics.json
+
 Run:
   python -m ml.evaluate_temporal_transformer --backbone mobilenetv2
   python -m ml.evaluate_temporal_transformer --backbone vit
@@ -18,14 +30,11 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from sklearn.metrics import (
-    accuracy_score, f1_score, roc_auc_score,
-    confusion_matrix, classification_report,
-    balanced_accuracy_score, matthews_corrcoef
-)
+from sklearn.metrics import balanced_accuracy_score  # only used for threshold search
 
 from ml.video_sequence_data_loader import FFPPSequenceDataset
 from ml.models.video.temporal_transformer import build_temporal_transformer_model
+from ml.metrics import compute_binary_metrics, save_metrics_report
 
 
 FRAMES_ROOT = Path("data/interim/frames/FaceForensics++_C23")
@@ -40,6 +49,26 @@ def _torch_load_compat(path: Path, device: str):
         return torch.load(path, map_location=device)
 
 
+def _pick_threshold_by_balanced_acc(y_true: np.ndarray, y_score: np.ndarray) -> float:
+    """
+    Picks threshold that maximizes balanced accuracy on *this* set.
+    Note: For proper scientific eval, tune threshold on VAL, not TEST.
+    Keeping this because you already had it; you can switch to val later.
+    """
+    best_t = 0.5
+    best_bal = -1.0
+
+    for t in np.linspace(0.05, 0.95, 19):
+        preds = (y_score >= t).astype(int)
+        bal = balanced_accuracy_score(y_true, preds)
+        if bal > best_bal:
+            best_bal = bal
+            best_t = float(t)
+
+    return best_t
+
+
+@torch.no_grad()
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--backbone", default="mobilenetv2", choices=["vit", "mobilenetv2"])
@@ -54,7 +83,8 @@ def main() -> None:
 
     out_dir = Path(f"experiments/results/ffpp_c23_temporal_{backbone}")
     ckpt_path = out_dir / "best_model.pt"
-    out_report = out_dir / "test_report.txt"
+    if not ckpt_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
 
     ds = FFPPSequenceDataset(
         frames_root=FRAMES_ROOT,
@@ -80,64 +110,64 @@ def main() -> None:
     model.eval()
 
     y_true: list[int] = []
-    y_prob: list[float] = []
+    y_score: list[float] = []
 
-    with torch.no_grad():
-        for frames, y, _ in tqdm(loader, desc="Evaluating"):
-            frames = frames.to(device)
-            logits = model(frames).squeeze(1)
-            probs = torch.sigmoid(logits).cpu().numpy()
+    for frames, y, _ in tqdm(loader, desc="Evaluating"):
+        frames = frames.to(device)
+        logits = model(frames).squeeze(1)
+        probs = torch.sigmoid(logits).cpu().numpy()
 
-            y_true.extend(y.numpy().astype(int).tolist())
-            y_prob.extend(probs.tolist())
+        # y is tensor [B]
+        y_true.extend([int(v) for v in y.cpu().numpy().tolist()])
+        y_score.extend([float(p) for p in probs.tolist()])
 
-    y_true_np = np.array(y_true)
-    y_prob_np = np.array(y_prob)
+    y_true_np = np.array(y_true, dtype=int)
+    y_score_np = np.array(y_score, dtype=float)
+
+    # threshold handling
     if backbone == "vit":
-        best_t = 0.5
-        best_bal = -1.0
-
-        for t in np.linspace(0.05, 0.95, 19):
-            preds = (y_prob_np >= t).astype(int)
-            bal = balanced_accuracy_score(y_true_np, preds)
-            if bal > best_bal:
-                best_bal = bal
-                best_t = float(t)
-
-        y_pred_np = (y_prob_np >= best_t).astype(int)
+        threshold = _pick_threshold_by_balanced_acc(y_true_np, y_score_np)
     else:
-        y_pred_np = (y_prob_np >= 0.5).astype(int)
+        threshold = 0.5
 
-    acc = accuracy_score(y_true_np, y_pred_np)
-    f1 = f1_score(y_true_np, y_pred_np)
-    try:
-        auc = roc_auc_score(y_true_np, y_prob_np)
-    except ValueError:
-        auc = float("nan")
+    # ---- unified metrics (AUC, AP, MCC, BalAcc included) ----
+    metrics = compute_binary_metrics(
+        y_true=y_true_np.tolist(),
+        y_score=y_score_np.tolist(),
+        threshold=threshold,
+        include_curves=True,
+    )
 
-    bal_acc = balanced_accuracy_score(y_true_np, y_pred_np)
-    mcc = matthews_corrcoef(y_true_np, y_pred_np)
-
-    cm = confusion_matrix(y_true_np, y_pred_np)
-    rep = classification_report(y_true_np, y_pred_np, digits=4)
-
-    text = [
-        f"TEMPORAL TRANSFORMER RESULTS (FF++ C23, backbone={backbone}, T=5)\n",
-        f"Num samples: {len(y_true_np)}",
-        f"Accuracy: {acc:.6f}",
-        f"F1: {f1:.6f}",
-        f"AUC: {auc:.6f}",
-        f"Balanced Accuracy: {bal_acc:.6f}",
-        f"MCC: {mcc:.6f}\n",
-        "Confusion matrix:",
-        str(cm),
-        "\nClassification report:\n" + rep,
-    ]
+    print(f"\nTEMPORAL TRANSFORMER RESULTS (FF++ C23, backbone={backbone}, T=5)")
+    print("Checkpoint:", ckpt_path)
+    print("Num samples:", metrics.num_samples)
+    print("Threshold:", threshold)
+    print("Accuracy:", metrics.accuracy)
+    print("Balanced accuracy:", getattr(metrics, "balanced_accuracy", None))
+    print("ROC-AUC:", metrics.auc_roc)
+    print("Average precision:", metrics.ap)
+    print("MCC:", getattr(metrics, "mcc", None))
+    print("Confusion matrix:\n", np.array(metrics.confusion_matrix))
+    print("\nReport:\n", metrics.report)
 
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_report.write_text("\n".join(text), encoding="utf-8")
-    print("\n".join(text))
-    print("\nSaved report ->", out_report)
+    txt_path, json_path = save_metrics_report(
+        out_dir=out_dir,
+        name="test",
+        metrics=metrics,
+        extra={
+            "dataset": "FaceForensics++ C23",
+            "model": "Temporal Transformer",
+            "backbone": backbone,
+            "T": t,
+            "img_size": img_size,
+            "threshold": threshold,
+            "checkpoint": str(ckpt_path),
+        },
+    )
+
+    print("\nSaved report ->", txt_path)
+    print("Saved metrics json ->", json_path)
 
 
 if __name__ == "__main__":

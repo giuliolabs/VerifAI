@@ -1,31 +1,25 @@
 """
 Evaluate Multimodal Fusion Model (Audio + Video) on FakeAVCeleb_v1.2 (TEST split).
 
-What it does
-------------
-- Loads FakeAVCeleb test split via ml.av_data_loader.FakeAVCelebAVDataset
-- Loads checkpoint: experiments/results/fakeavceleb_av_fusion_v1/best_model.pt
-- Runs inference and computes:
-    - Accuracy, F1, AUC
-    - Confusion matrix
-    - Classification report
-- Saves report to:
-    experiments/results/fakeavceleb_av_fusion_v1/test_report.txt
+Outputs (in experiments/results/fakeavceleb_av_fusion_v1):
+- test_report.txt
+- test_metrics.json
 
-Run (from project root)
------------------------
-python -m ml.evaluate_av_fusion
+Run (from project root):
+    python -m ml.evaluate_av_fusion
 
-Dependencies
-------------
-pip install torch torchvision numpy scikit-learn tqdm
+Dependencies:
+    pip install torch torchvision numpy scikit-learn tqdm
 
 Author: Giulio Dajani
 Project: VerifAI – Deepfake Detection Framework
 """
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
+
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
@@ -33,16 +27,9 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from sklearn.metrics import (
-    accuracy_score,
-    f1_score,
-    roc_auc_score,
-    confusion_matrix,
-    classification_report,
-)
-
 from ml.av_data_loader import FakeAVCelebAVDataset
 from ml.models.fusion.multimodal_fusion import MultimodalFusionModel
+from ml.metrics import compute_binary_metrics, save_metrics_report
 
 
 def _to_1d_logits(logits: torch.Tensor) -> torch.Tensor:
@@ -52,19 +39,20 @@ def _to_1d_logits(logits: torch.Tensor) -> torch.Tensor:
     return logits
 
 
+@torch.no_grad()
 def main():
     ckpt_path = Path("experiments/results/fakeavceleb_av_fusion_v1/best_model.pt")
     if not ckpt_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
 
     out_dir = ckpt_path.parent
-    out_report = out_dir / "test_report.txt"
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device:", device)
 
     ckpt = torch.load(ckpt_path, map_location=device)
-    mfcc_max_len = ckpt.get("mfcc_max_len", 200)
+    mfcc_max_len = int(ckpt.get("mfcc_max_len", 200))
 
     # ---- data ----
     test_ds = FakeAVCelebAVDataset("test", strict=True, mfcc_max_len=mfcc_max_len)
@@ -75,57 +63,57 @@ def main():
     model.load_state_dict(ckpt["model_state"])
     model.eval()
 
-    y_true = []
-    y_prob = []
+    y_true: list[int] = []
+    y_score: list[float] = []
 
-    with torch.no_grad():
-        for video, mfcc, y, _ in tqdm(test_loader, desc="Evaluating"):
-            video = video.to(device)
-            mfcc = mfcc.to(device)
+    for video, mfcc, y, _ in tqdm(test_loader, desc="Evaluating"):
+        video = video.to(device)
+        mfcc = mfcc.to(device)
 
-            logits = model(video, mfcc)
-            logits = _to_1d_logits(logits)
+        logits = _to_1d_logits(model(video, mfcc))
+        probs = torch.sigmoid(logits).cpu().numpy()
 
-            probs = torch.sigmoid(logits).detach().cpu().numpy()
-            y_prob.extend(probs.tolist())
+        y_score.extend([float(p) for p in probs.tolist()])
+        # y might be tensor/list; normalize to int
+        if isinstance(y, torch.Tensor):
+            y_true.extend([int(v) for v in y.cpu().numpy().tolist()])
+        else:
+            y_true.extend([int(v) for v in y])
 
-            y_true.extend(y.detach().cpu().numpy().astype(int).tolist())
+    # ---- metrics (single source of truth) ----
+    metrics = compute_binary_metrics(
+        y_true=y_true,
+        y_score=y_score,
+        threshold=0.5,
+        include_curves=True,
+    )
 
-    y_true = np.array(y_true)
-    y_prob = np.array(y_prob)
-    y_pred = (y_prob >= 0.5).astype(int)
+    print("\nAUDIO+VIDEO FUSION RESULTS (FakeAVCeleb AV Fusion v1)")
+    print("Checkpoint:", ckpt_path)
+    print("MFCC max len (batching):", mfcc_max_len)
+    print("Num samples:", metrics.num_samples)
+    print("Accuracy:", metrics.accuracy)
+    print("Balanced accuracy:", getattr(metrics, "balanced_accuracy", None))
+    print("ROC-AUC:", metrics.auc_roc)
+    print("Average precision:", metrics.ap)
+    print("MCC:", getattr(metrics, "mcc", None))
+    print("Confusion matrix:\n", np.array(metrics.confusion_matrix))
+    print("\nReport:\n", metrics.report)
 
-    acc = accuracy_score(y_true, y_pred)
-    f1 = f1_score(y_true, y_pred)
+    txt_path, json_path = save_metrics_report(
+        out_dir=out_dir,
+        name="test",
+        metrics=metrics,
+        extra={
+            "dataset": "FakeAVCeleb",
+            "model": "AV Fusion v1",
+            "mfcc_max_len": mfcc_max_len,
+            "checkpoint": str(ckpt_path),
+        },
+    )
 
-    try:
-        auc = roc_auc_score(y_true, y_prob)
-    except ValueError:
-        auc = float("nan")
-
-    cm = confusion_matrix(y_true, y_pred)
-    rep = classification_report(y_true, y_pred, digits=4)
-
-    text = [
-        "AUDIO+VIDEO FUSION RESULTS (FakeAVCeleb AV Fusion v1)\n",
-        f"Checkpoint: {ckpt_path}",
-        f"MFCC max len (batching): {mfcc_max_len}",
-        f"Num samples: {len(y_true)}",
-        "",
-        f"Accuracy: {acc:.6f}",
-        f"F1: {f1:.6f}",
-        f"AUC: {auc:.6f}",
-        "",
-        "Confusion matrix:",
-        str(cm),
-        "",
-        "Classification report:",
-        rep,
-    ]
-
-    out_report.write_text("\n".join(text), encoding="utf-8")
-    print("\n".join(text))
-    print("\nSaved report ->", out_report)
+    print("\nSaved report ->", txt_path)
+    print("Saved metrics json ->", json_path)
 
 
 if __name__ == "__main__":
