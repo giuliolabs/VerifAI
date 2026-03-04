@@ -1,0 +1,24 @@
+{
+  "num_samples": 2075,
+  "accuracy": 0.9686746987951808,
+  "balanced_accuracy": 0.6990740740740741,
+  "f1": 0.983745936484121,
+  "auc_roc": 0.8544008548456946,
+  "ap": 0.9903388906080103,
+  "mcc": 0.620815681136189,
+  "confusion_matrix": [
+    [
+      43,
+      65
+    ],
+    [
+      0,
+      1967
+    ]
+  ],
+  "checkpoint": "experiments\\results\\fakeavceleb_audio_resnet_baseline\\best_model.pt",
+  "dataset": "FakeAVCeleb_v1.2",
+  "model": "mfcc_resnet18",
+  "task": "binary_classification",
+  "threshold": 0.5
+}

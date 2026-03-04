@@ -141,11 +141,14 @@ def main():
         best_path = out_dir / "best_model.pt"
         log_path = out_dir / "fusion_log.csv"
 
-        epochs = 5
+        MAX_EPOCHS = 15
+        PATIENCE = 3
+        MIN_DELTA = 1e-4
+
         lr = 1e-4
-        batch_size = 8          # CPU friendly; increase if you have GPU
-        num_workers = 0         # Windows safe (OneDrive); set 2 if stable
-        mfcc_max_len = 200      # IMPORTANT for batching (pads/truncates MFCC time axis)
+        batch_size = 8
+        num_workers = 0
+        mfcc_max_len = 200
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print("Device:", device)
@@ -198,15 +201,17 @@ def main():
         best_val_f1 = float("nan")
         best_val_auc = float("nan")
 
+        epochs_no_improve = 0
+
         # -------------------------
         # Train loop
         # -------------------------
-        for epoch in range(1, epochs + 1):
+        for epoch in range(1, MAX_EPOCHS + 1):
             model.train()
             train_loss_sum = 0.0
             train_count = 0
 
-            for video, mfcc, y, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{epochs} - train"):
+            for video, mfcc, y, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{MAX_EPOCHS} - train"):
                 video = video.to(device)
                 mfcc = mfcc.to(device)
                 y = y.float().to(device)
@@ -227,7 +232,7 @@ def main():
             train_loss = train_loss_sum / max(train_count, 1)
 
             # -------------------------
-            # Validation + metrics
+            # Validation
             # -------------------------
             val_loss, val_acc, val_f1, val_auc, vnorm, anorm = evaluate(model, val_loader, device)
 
@@ -238,12 +243,11 @@ def main():
                 f"acc={val_acc:.4f}  f1={val_f1:.4f}  auc={val_auc:.4f}"
             )
 
-            # write fusion log row
+            # write fusion log
             with open(log_path, "a", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow([epoch, train_loss, val_loss, val_acc, val_f1, val_auc, vnorm, anorm])
 
-            # central curves log
             append_curve_row(curve_csv, {
                 "epoch": epoch,
                 "train_loss": train_loss,
@@ -253,13 +257,15 @@ def main():
                 "val_acc": val_acc,
             })
 
-            # save best
-            if val_loss < best_val_loss:
+            improved = (best_val_loss - val_loss) > MIN_DELTA
+
+            if improved:
                 best_val_loss = val_loss
                 best_epoch = epoch
                 best_val_acc = val_acc
                 best_val_f1 = val_f1
                 best_val_auc = val_auc
+                epochs_no_improve = 0
 
                 torch.save({
                     "model_state": model.state_dict(),
@@ -271,14 +277,26 @@ def main():
                     "mfcc_max_len": mfcc_max_len,
                     "config": {
                         "model": "multimodal_fusion",
-                        "epochs": epochs,
+                        "epochs": MAX_EPOCHS,
+                        "patience": PATIENCE,
                         "lr": lr,
                         "batch_size": batch_size,
                         "num_workers": num_workers,
                         "mfcc_max_len": mfcc_max_len,
                     }
                 }, best_path)
+
                 print("Saved best ->", best_path)
+
+            else:
+                epochs_no_improve += 1
+
+                if epochs_no_improve >= PATIENCE:
+                    print(
+                        f"Early stopping triggered. "
+                        f"Best epoch={best_epoch} | best_val_loss={best_val_loss:.4f}"
+                    )
+                    break
 
         log_run(run_name, payload={
             "task": "train",

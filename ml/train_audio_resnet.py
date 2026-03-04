@@ -40,12 +40,20 @@ def main():
     run_name = "audio_resnet_baseline"
     curve_csv = f"experiments/logs/training_curves/{run_name}.csv"
 
+    # ---------------------------
+    # CHANGE THESE (new training policy)
+    # ---------------------------
+    MAX_EPOCHS = 15          # was 5
+    PATIENCE = 3            # early stopping patience (epochs)
+    MIN_DELTA = 1e-4        # ignore tiny improvements in val_loss
+    # ---------------------------
+
     try:
         train_csv = "data/splits/fakeavceleb_train.csv"
-        val_csv   = "data/splits/fakeavceleb_val.csv"
+        val_csv = "data/splits/fakeavceleb_val.csv"
 
         mfcc_train_root = "data/processed/audio_features/FakeAVCeleb_v1.2/train"
-        mfcc_val_root   = "data/processed/audio_features/FakeAVCeleb_v1.2/val"
+        mfcc_val_root = "data/processed/audio_features/FakeAVCeleb_v1.2/val"
 
         out_dir = Path("experiments/results/fakeavceleb_audio_resnet_baseline")
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -55,7 +63,7 @@ def main():
         print("Device:", device)
 
         train_ds = MFCCDataset(train_csv, mfcc_train_root)
-        val_ds   = MFCCDataset(val_csv, mfcc_val_root)
+        val_ds = MFCCDataset(val_csv, mfcc_val_root)
 
         print("Train items:", len(train_ds))
         print("Val items:", len(val_ds))
@@ -66,7 +74,7 @@ def main():
             )
 
         train_loader = DataLoader(train_ds, batch_size=32, shuffle=True, num_workers=0)
-        val_loader   = DataLoader(val_ds, batch_size=64, shuffle=False, num_workers=0)
+        val_loader = DataLoader(val_ds, batch_size=64, shuffle=False, num_workers=0)
 
         model = build_mfcc_resnet18_binary(pretrained=True).to(device)
         loss_fn = nn.BCEWithLogitsLoss()
@@ -77,12 +85,15 @@ def main():
         best_val_auc = float("nan")
         best_val_f1 = float("nan")
 
-        for epoch in range(1, 6):  # 5 epoch baseline
+        # early stopping state
+        epochs_no_improve = 0
+
+        for epoch in range(1, MAX_EPOCHS + 1):
             # ---- train ----
             model.train()
             train_loss_sum, train_count = 0.0, 0
 
-            for x, y, _ in tqdm(train_loader, desc=f"Epoch {epoch}/5 - train"):
+            for x, y, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{MAX_EPOCHS} - train"):
                 x = x.to(device)
                 y = y.float().to(device)
 
@@ -106,7 +117,7 @@ def main():
             all_probs = []
 
             with torch.no_grad():
-                for x, y, _ in tqdm(val_loader, desc=f"Epoch {epoch}/5 - val"):
+                for x, y, _ in tqdm(val_loader, desc=f"Epoch {epoch}/{MAX_EPOCHS} - val"):
                     x = x.to(device)
                     y = y.float().to(device)
 
@@ -125,7 +136,7 @@ def main():
             val_loss = val_loss_sum / max(val_count, 1)
 
             val_auc = float("nan")
-            val_f1 = float("nan")
+            float("nan")
 
             if len(set(all_labels)) > 1:
                 val_auc = roc_auc_score(all_labels, all_probs)
@@ -138,11 +149,14 @@ def main():
                 f"val_auc={val_auc:.4f}  val_f1={val_f1:.4f}"
             )
 
-            if val_loss < best_val_loss:
+            # save best + early stopping check (val_loss primary)
+            improved = (best_val_loss - val_loss) > MIN_DELTA
+            if improved:
                 best_val_loss = val_loss
                 best_val_auc = val_auc
                 best_val_f1 = val_f1
                 best_epoch = epoch
+                epochs_no_improve = 0
 
                 torch.save({
                     "model_state": model.state_dict(),
@@ -153,12 +167,30 @@ def main():
                     "config": {
                         "model": "mfcc_resnet18",
                         "lr": 1e-4,
-                        "epochs": 5,
+                        "epochs": MAX_EPOCHS,
+                        "patience": PATIENCE,
+                        "min_delta": MIN_DELTA,
                         "batch_train": 32,
                         "batch_val": 64,
                     }
                 }, best_path)
                 print("Saved best ->", best_path)
+            else:
+                epochs_no_improve += 1
+                if epochs_no_improve >= PATIENCE:
+                    print(
+                        f"Early stopping: no val_loss improvement > {MIN_DELTA} "
+                        f"for {PATIENCE} epoch(s). Best epoch={best_epoch}, best_val_loss={best_val_loss:.4f}"
+                    )
+                    # still log the final curve row below, then break
+                    append_curve_row(curve_csv, {
+                        "epoch": epoch,
+                        "train_loss": train_loss,
+                        "val_loss": val_loss,
+                        "val_auc": val_auc,
+                        "val_f1": val_f1,
+                    })
+                    break
 
             append_curve_row(curve_csv, {
                 "epoch": epoch,
@@ -181,7 +213,7 @@ def main():
                 "best_val_f1": best_val_f1,
             },
             "artifacts": [str(best_path), str(curve_csv)],
-            "notes": "Baseline 5 epochs. Curves + AUC/F1 logged.",
+            "notes": f"Training with early stopping. max_epochs={MAX_EPOCHS}, patience={PATIENCE}, min_delta={MIN_DELTA}.",
         })
 
         print("Done. Best val loss:", best_val_loss)

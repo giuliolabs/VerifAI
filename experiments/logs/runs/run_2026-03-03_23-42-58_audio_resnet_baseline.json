@@ -1,0 +1,36 @@
+{
+  "meta": {
+    "project": "VerifAI",
+    "run_name": "audio_resnet_baseline",
+    "timestamp": "2026-03-03T23:42:58",
+    "python": "3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cwd": "C:\\Users\\dajan\\OneDrive - University of Greenwich\\Desktop\\UniversityOfGreenwich\\3rd year\\COMP1682\\deepfake-framework",
+    "git_commit": "f36ae332ea2e62a7d25945e538104db25a085143",
+    "git_branch": "main",
+    "git_dirty": "M experiments/logs/training_curves/audio_resnet_baseline.csv\n M experiments/results/_summary/model_comparison.csv\n M experiments/results/_summary/model_comparison.md\n M experiments/results/fakeavceleb_audio_resnet_baseline/best_model.pt\n M experiments/results/ffpp_c23_mobilenet_baseline/best_model.pt\n M experiments/results/ffpp_c23_mobilenet_baseline/video_level_metrics.json\n M experiments/results/ffpp_c23_mobilenet_baseline/video_level_report.txt\n M ml/__pycache__/__init__.cpython-312.pyc\n M ml/__pycache__/data_loader.cpython-312.pyc\n M ml/__pycache__/train.cpython-312.pyc\n M ml/__pycache__/train_audio_resnet.cpython-312.pyc\n M ml/models/__pycache__/__init__.cpython-312.pyc\n M ml/models/video/__pycache__/__init__.cpython-312.pyc\n M ml/models/video/__pycache__/mobilenet_baseline.cpython-312.pyc\n M ml/train.py\n M ml/train_audio_resnet.py\n?? ml/__pycache__/augmentations.cpython-312.pyc\n?? ml/__pycache__/evaluate.cpython-312.pyc\n?? ml/__pycache__/evaluate_temporal_transformer.cpython-312.pyc\n?? ml/__pycache__/evaluate_vit.cpython-312.pyc\n?? ml/__pycache__/evaluation_consolidation.cpython-312.pyc\n?? ml/__pycache__/metrics.cpython-312.pyc\n?? ml/__pycache__/train_temporal_transformer.cpython-312.pyc\n?? ml/__pycache__/train_vit.cpython-312.pyc\n?? ml/__pycache__/video_sequence_data_loader.cpython-312.pyc\n?? ml/models/video/__pycache__/temporal_transformer.cpython-312.pyc\n?? ml/models/video/__pycache__/vit.cpython-312.pyc\n?? scripts/__pycache__/",
+    "torch_version": "2.9.1+cpu",
+    "cuda_available": false,
+    "cuda_version": null,
+    "cudnn_version": null,
+    "gpu_name": null
+  },
+  "payload": {
+    "task": "train",
+    "model": "mfcc_resnet18",
+    "dataset": "FakeAVCeleb_v1.2",
+    "split": "train/val",
+    "seed": null,
+    "metrics": {
+      "best_val_loss": 0.10251507022697973,
+      "best_epoch": 4,
+      "best_val_auc": 0.8902845660910177,
+      "best_val_f1": 0.9862945427361076
+    },
+    "artifacts": [
+      "experiments\\results\\fakeavceleb_audio_resnet_baseline\\best_model.pt",
+      "experiments/logs/training_curves/audio_resnet_baseline.csv"
+    ],
+    "notes": "Training with early stopping. max_epochs=30, patience=5, min_delta=0.0001."
+  }
+}

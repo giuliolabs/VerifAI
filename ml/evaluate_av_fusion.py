@@ -51,7 +51,13 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device:", device)
 
-    ckpt = torch.load(ckpt_path, map_location=device)
+    def _torch_load_compat(path: Path, device: str):
+        try:
+            return torch.load(path, map_location=device, weights_only=False)
+        except TypeError:
+            return torch.load(path, map_location=device)
+
+    ckpt = _torch_load_compat(ckpt_path, device)
     mfcc_max_len = int(ckpt.get("mfcc_max_len", 200))
 
     # ---- data ----

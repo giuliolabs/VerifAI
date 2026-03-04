@@ -1,20 +1,25 @@
 AUDIO-ONLY RESULTS (FakeAVCeleb MFCC->ResNet18 baseline)
 
+Checkpoint: experiments\results\fakeavceleb_audio_resnet_baseline\best_model.pt
 Num samples: 2075
-Accuracy: 0.967229
-F1: 0.983000
-AUC: 0.846690
+
+Accuracy: 0.968675
+Balanced Accuracy: 0.699074
+F1: 0.983746
+ROC-AUC: 0.854401
+Average precision: 0.990339
+MCC: 0.620816
 
 Confusion matrix:
-[[  41   67]
- [   1 1966]]
+[[  43   65]
+ [   0 1967]]
 
 Classification report:
               precision    recall  f1-score   support
 
-           0     0.9762    0.3796    0.5467       108
-           1     0.9670    0.9995    0.9830      1967
+           0     1.0000    0.3981    0.5695       108
+           1     0.9680    1.0000    0.9837      1967
 
-    accuracy                         0.9672      2075
-   macro avg     0.9716    0.6896    0.7648      2075
-weighted avg     0.9675    0.9672    0.9603      2075
+    accuracy                         0.9687      2075
+   macro avg     0.9840    0.6991    0.7766      2075
+weighted avg     0.9697    0.9687    0.9622      2075

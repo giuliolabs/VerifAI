@@ -1,21 +1,21 @@
 VIDEO_LEVEL RESULTS
 Num samples: 712
-Accuracy: 0.40870786516853935
-ROC-AUC: 0.44960610646252447
-Average precision: 0.7402324245919939
+Accuracy: 0.4353932584269663
+ROC-AUC: 0.47115898166280934
+Average precision: 0.7510511953757926
 Threshold: 0.5
 Confusion matrix:
-[[100  64]
- [357 191]]
+[[ 94  70]
+ [332 216]]
 
               precision    recall  f1-score   support
 
-           0     0.2188    0.6098    0.3221       164
-           1     0.7490    0.3485    0.4757       548
+           0     0.2207    0.5732    0.3186       164
+           1     0.7552    0.3942    0.5180       548
 
-    accuracy                         0.4087       712
-   macro avg     0.4839    0.4791    0.3989       712
-weighted avg     0.6269    0.4087    0.4403       712
+    accuracy                         0.4354       712
+   macro avg     0.4880    0.4837    0.4183       712
+weighted avg     0.6321    0.4354    0.4721       712
 
 
 EXTRA
