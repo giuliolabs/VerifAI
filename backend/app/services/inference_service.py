@@ -150,7 +150,7 @@ def run_inference(upload_file):
         with torch.no_grad():
             if has_audio:
                 logit = av_model(video, mfcc)
-                float(logit.squeeze().item())
+                logit_value = float(logit.squeeze().item())
                 prob_fake = float(torch.sigmoid(logit.squeeze()).item())
 
             else:
@@ -164,12 +164,7 @@ def run_inference(upload_file):
                 logit_value = sum(all_frame_logits) / len(all_frame_logits)
                 prob_fake = float(torch.sigmoid(torch.tensor(logit_value, device=_DEVICE)).item())
 
-        if prob_fake >= 0.60:
-            label = "fake"
-        elif prob_fake <= 0.40:
-            label = "real"
-        else:
-            label = "uncertain"
+        label = "fake" if prob_fake >= _THRESHOLD else "real"
         return label, prob_fake
 
     finally:
