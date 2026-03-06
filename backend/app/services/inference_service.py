@@ -164,7 +164,12 @@ def run_inference(upload_file):
                 logit_value = sum(all_frame_logits) / len(all_frame_logits)
                 prob_fake = float(torch.sigmoid(torch.tensor(logit_value, device=_DEVICE)).item())
 
-        label = "fake" if prob_fake >= _THRESHOLD else "real"
+        if prob_fake >= 0.55:
+            label = "fake"
+        elif prob_fake <= 0.45:
+            label = "real"
+        else:
+            label = "uncertain"
 
         return label, prob_fake
 
