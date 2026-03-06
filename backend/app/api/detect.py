@@ -3,12 +3,17 @@ Detection API Endpoint
 ======================
 
 Defines the REST endpoint responsible for receiving video uploads
-and returning multimodal deepfake detection results.
+and returning deepfake detection results.
+
+The endpoint delegates all inference to the inference service:
+- Audio-Visual inference is used when usable audio is present
+- Visual-only fallback is used when audio is absent
 
 ------------------------------------------------
 DEPENDENCIES
 ------------------------------------------------
     pip install fastapi torch
+
 ------------------------------------------------
 ENDPOINT
 ------------------------------------------------
@@ -16,7 +21,7 @@ POST /api/predict
     Input:
         - Multipart video file (mp4, avi, mov)
     Output:
-        - JSON with prediction label and confidence score
+        - JSON with prediction label and fake probability
 
 ------------------------------------------------
 NOTES FOR EXAMINERS
@@ -49,33 +54,23 @@ MAX_UPLOAD_MB = 25
 @router.post("/predict", response_model=PredictResponse, dependencies=[Depends(require_api_key)])
 async def predict(file: UploadFile = File(...)):
     """
-    Run multimodal deepfake detection on an uploaded video.
+    Run deepfake detection on an uploaded video.
     """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file uploaded")
 
     filename_lower = file.filename.lower()
 
-    # --- File extension validation ---
     if not any(filename_lower.endswith(ext) for ext in ALLOWED_EXTENSIONS):
         raise HTTPException(
             status_code=400,
             detail=f"Invalid file type. Supported extensions: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
         )
 
-    # --- Basic sanity checks (empty, size guard, mp4 signature) ---
-    # Read an initial chunk to:
-    #  - detect empty uploads
-    #  - check mp4 'ftyp' signature
-    #  - estimate size without loading the entire file into RAM
-    #
-    # NOTE: UploadFile is spooled to disk after a threshold, but on hosted platforms
-    # it’s still smart to enforce an upper bound to avoid timeouts/502s.
     first_chunk = await file.read(512)
     if not first_chunk:
         raise HTTPException(status_code=400, detail="Uploaded file is empty")
 
-    # Lightweight MP4 signature check
     if filename_lower.endswith(".mp4") and b"ftyp" not in first_chunk:
         await file.seek(0)
         raise HTTPException(
@@ -83,18 +78,15 @@ async def predict(file: UploadFile = File(...)):
             detail="Invalid MP4 file. The uploaded file does not look like a valid MP4 container.",
         )
 
-    # Size guard (stream the rest in chunks and stop once we exceed the limit)
     max_bytes = MAX_UPLOAD_MB * 1024 * 1024
     size_so_far = len(first_chunk)
 
-    # Read remaining bytes in chunks, but abort once limit exceeded
     while size_so_far <= max_bytes:
-        chunk = await file.read(1024 * 1024)  # 1MB
+        chunk = await file.read(1024 * 1024)
         if not chunk:
             break
         size_so_far += len(chunk)
 
-    # Reset the stream pointer so inference_service can read from the start
     await file.seek(0)
 
     if size_so_far > max_bytes:
@@ -103,19 +95,16 @@ async def predict(file: UploadFile = File(...)):
             detail=f"File too large. Max allowed is {MAX_UPLOAD_MB} MB.",
         )
 
-    # --- Run inference ---
     try:
         label, prob = run_inference(file)
     except HTTPException:
         raise
     except Exception as exception:
-        # Convert unexpected inference errors into a clearer response.
-        # (Prevents generic 502 with zero context)
         raise HTTPException(
             status_code=500,
             detail=f"Inference failed: {type(exception).__name__}",
         ) from exception
 
-    log_prediction(file.filename, label, float(prob))  # Log prediction to database
+    log_prediction(file.filename, label, float(prob))
 
     return {"label": label, "prob_fake": float(prob)}

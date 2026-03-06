@@ -76,6 +76,7 @@ import os
 import tempfile
 
 import torch
+from fastapi import HTTPException
 
 from ml.models.fusion.multimodal_fusion import MultimodalFusionModel
 from ml.models.video.vit import build_vit_binary
@@ -138,10 +139,11 @@ def run_inference(upload_file):
     try:
         video, mfcc = extract_features_from_video(video_path)
 
-        # video expected from preprocessing: [T, 3, 224, 224]
-        # mfcc expected from preprocessing: [1, 40, T_audio] or similar
         video = video.unsqueeze(0).to(_DEVICE)   # [1, T, 3, 224, 224]
         mfcc = mfcc.unsqueeze(0).to(_DEVICE)
+
+        if video.shape[1] == 0:
+            raise HTTPException(status_code=400, detail="No valid video frames could be extracted.")
 
         has_audio = not torch.all(mfcc == 0)
 
@@ -155,12 +157,12 @@ def run_inference(upload_file):
                 all_frame_logits = []
 
                 for frame_index in range(video.shape[1]):
-                    frame = video[:, frame_index, :, :, :]   # [1, 3, 224, 224]
+                    frame = video[:, frame_index, :, :, :]
                     frame_logit = visual_model(frame)
                     all_frame_logits.append(float(frame_logit.squeeze().item()))
 
                 logit_value = sum(all_frame_logits) / len(all_frame_logits)
-                prob_fake = float(torch.sigmoid(torch.tensor(logit_value)).item())
+                prob_fake = float(torch.sigmoid(torch.tensor(logit_value, device=_DEVICE)).item())
 
         label = "fake" if prob_fake >= _THRESHOLD else "real"
 
