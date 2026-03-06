@@ -166,24 +166,6 @@ def run_inference(upload_file):
 
         label = "fake" if prob_fake >= _THRESHOLD else "real"
 
-        # Debug output for local validation
-        print("Model used:", model_used)
-        print("Has audio:", has_audio)
-        print("Video tensor shape:", video.shape)
-        print("MFCC tensor shape:", mfcc.shape)
-        print("Video min/max:", video.min().item(), video.max().item())
-        print("MFCC min/max:", mfcc.min().item(), mfcc.max().item())
-
-        if has_audio:
-            print("Raw logit:", logit_value)
-        else:
-            print("Visual fallback frames used:", video.shape[1])
-            print("Per-frame logits:", all_frame_logits)
-            print("Averaged logit:", logit_value)
-
-        print("Probability fake:", prob_fake)
-        print("Final label:", label)
-
         return label, prob_fake
 
     finally:
