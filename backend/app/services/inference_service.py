@@ -140,7 +140,7 @@ def run_inference(upload_file):
         video, mfcc = extract_features_from_video(video_path)
 
         video = video.unsqueeze(0).to(_DEVICE)   # [1, T, 3, 224, 224]
-        mfcc = mfcc.unsqueeze(0).to(_DEVICE)
+        mfcc = mfcc.unsqueeze(0).to(_DEVICE)     # [1, 1, 40, 200]
 
         if video.shape[1] == 0:
             raise HTTPException(status_code=400, detail="No valid video frames could be extracted.")
@@ -150,27 +150,21 @@ def run_inference(upload_file):
         with torch.no_grad():
             if has_audio:
                 logit = av_model(video, mfcc)
-                float(logit.squeeze().item())
+                logit_value = float(logit.squeeze().item())
                 prob_fake = float(torch.sigmoid(logit.squeeze()).item())
 
             else:
                 all_frame_logits = []
 
                 for frame_index in range(video.shape[1]):
-                    frame = video[:, frame_index, :, :, :]
+                    frame = video[:, frame_index, :, :, :]   # [1, 3, 224, 224]
                     frame_logit = visual_model(frame)
                     all_frame_logits.append(float(frame_logit.squeeze().item()))
 
                 logit_value = sum(all_frame_logits) / len(all_frame_logits)
                 prob_fake = float(torch.sigmoid(torch.tensor(logit_value, device=_DEVICE)).item())
 
-        if prob_fake >= 0.55:
-            label = "fake"
-        elif prob_fake <= 0.45:
-            label = "real"
-        else:
-            label = "uncertain"
-
+        label = "fake" if prob_fake >= _THRESHOLD else "real"
         return label, prob_fake
 
     finally:
