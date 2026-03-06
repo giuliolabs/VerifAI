@@ -59,11 +59,11 @@ NOTES FOR EXAMINERS
 ------------------------------------------------
 - Models are loaded once at import time for efficient inference.
 - Temporary uploaded files are cleaned automatically.
-- The AV model is prioritised because it uses both visual and audio evidence.
+- The AV model is prioritized because it uses both visual and audio evidence.
 - Silent or audio-stripped videos are handled explicitly via a visual fallback.
 - The visual fallback model is frame-based, so multiple representative frames
   are evaluated and their logits are averaged before making a final decision.
-- This avoids unreliable behaviour caused by feeding empty audio features
+- This avoids unreliable behavior caused by feeding empty audio features
   into a multimodal fusion model and improves stability for silent clips.
 
 Author: Giulio Dajani
@@ -148,9 +148,8 @@ def run_inference(upload_file):
         with torch.no_grad():
             if has_audio:
                 logit = av_model(video, mfcc)
-                logit_value = float(logit.squeeze().item())
+                float(logit.squeeze().item())
                 prob_fake = float(torch.sigmoid(logit.squeeze()).item())
-                model_used = "fakeavceleb_av_fusion_v1"
 
             else:
                 all_frame_logits = []
@@ -162,7 +161,6 @@ def run_inference(upload_file):
 
                 logit_value = sum(all_frame_logits) / len(all_frame_logits)
                 prob_fake = float(torch.sigmoid(torch.tensor(logit_value)).item())
-                model_used = "ffpp_c23_vit_baseline_multi_frame"
 
         label = "fake" if prob_fake >= _THRESHOLD else "real"
 
