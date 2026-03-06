@@ -4,18 +4,6 @@ Train Audio-Only Model: Raw WAV -> 1D CNN Encoder (binary).
 Dataset: FakeAVCeleb_v1.2 (audio)
 Input: .wav files under data/interim/audio/FakeAVCeleb_v1.2/<split>/
 
-This script mirrors the style of other VerifAI training scripts:
-- 5 epoch baseline
-- saves best checkpoint by lowest val_loss
-- writes training curves CSV for plotting:
-    experiments/logs/training_curves/wav_encoder_baseline.csv
-
-Dependencies:
-    pip install torch numpy pandas tqdm soundfile
-
-Run (from project root):
-    python -m ml.train_wav_encoder
-
 Outputs:
     experiments/results/fakeavceleb_wav_encoder_baseline/best_model.pt
     experiments/logs/training_curves/wav_encoder_baseline.csv
@@ -44,28 +32,32 @@ from scripts.curve_writer import append_curve_row
 
 
 # -------------------------
-# CONFIG (baseline)
+# CONFIG (project standard)
 # -------------------------
 TRAIN_CSV = "data/splits/fakeavceleb_train.csv"
-VAL_CSV = "data/splits/fakeavceleb_val.csv"
+VAL_CSV   = "data/splits/fakeavceleb_val.csv"
 
 WAV_TRAIN_ROOT = "data/interim/audio/FakeAVCeleb_v1.2/train"
-WAV_VAL_ROOT = "data/interim/audio/FakeAVCeleb_v1.2/val"
+WAV_VAL_ROOT   = "data/interim/audio/FakeAVCeleb_v1.2/val"
 
-OUT_DIR = Path("experiments/results/fakeavceleb_wav_encoder_baseline")
+OUT_DIR  = Path("experiments/results/fakeavceleb_wav_encoder_baseline")
 RUN_NAME = "wav_encoder_baseline"
 
-EPOCHS = 5
+# project-wide defaults
+MAX_EPOCHS = 15
+PATIENCE   = 3
+MIN_DELTA  = 1e-4
+
 LR = 1e-4
 BATCH_TRAIN = 16
-BATCH_VAL = 32
-NUM_WORKERS = 0  # Windows/OneDrive safe
+BATCH_VAL   = 32
+NUM_WORKERS = 0
 SEED = 42
 
 # WAV settings
 SAMPLE_RATE = 16000
 SECONDS = 3
-STRICT_SR = False  # set True if you're 100% sure all files are 16kHz
+STRICT_SR = False
 
 
 def set_seed(seed: int) -> None:
@@ -106,9 +98,6 @@ def main() -> None:
     print("Train items:", len(train_ds))
     print("Val items:", len(val_ds))
 
-    if len(train_ds) == 0 or len(val_ds) == 0:
-        raise ValueError("Train/Val dataset is empty. Check CSV paths and wav_root folders.")
-
     train_loader = DataLoader(
         train_ds,
         batch_size=BATCH_TRAIN,
@@ -138,26 +127,25 @@ def main() -> None:
     optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
 
     best_val_loss = float("inf")
+    bad_epochs = 0
 
-    # -------------------------
-    # Curves CSV path
-    # -------------------------
     curve_csv = f"experiments/logs/training_curves/{RUN_NAME}.csv"
 
     # -------------------------
     # Train loop
     # -------------------------
-    for epoch in range(1, EPOCHS + 1):
-        # ---- train ----
+    for epoch in range(1, MAX_EPOCHS + 1):
+
+        # ---- TRAIN ----
         model.train()
         train_loss_sum = 0.0
         train_count = 0
 
-        for x, y, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{EPOCHS} - train"):
-            x = x.to(device)                   # [B,1,T]
-            y = y.float().to(device)           # [B]
+        for x, y, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{MAX_EPOCHS} - train"):
+            x = x.to(device)
+            y = y.float().to(device)
 
-            logits = model(x).squeeze(1)       # [B]
+            logits = model(x).squeeze(1)
             loss = loss_fn(logits, y)
 
             optimizer.zero_grad()
@@ -170,13 +158,13 @@ def main() -> None:
 
         train_loss = train_loss_sum / max(train_count, 1)
 
-        # ---- val ----
+        # ---- VALIDATION ----
         model.eval()
         val_loss_sum = 0.0
         val_count = 0
 
         with torch.no_grad():
-            for x, y, _ in tqdm(val_loader, desc=f"Epoch {epoch}/{EPOCHS} - val"):
+            for x, y, _ in tqdm(val_loader, desc=f"Epoch {epoch}/{MAX_EPOCHS} - val"):
                 x = x.to(device)
                 y = y.float().to(device)
 
@@ -191,9 +179,13 @@ def main() -> None:
 
         print(f"Epoch {epoch}: train_loss={train_loss:.4f}  val_loss={val_loss:.4f}")
 
-        # Save best
-        if val_loss < best_val_loss:
+        # ---- EARLY STOPPING + CHECKPOINT ----
+        improved = (best_val_loss - val_loss) > MIN_DELTA
+
+        if improved:
             best_val_loss = val_loss
+            bad_epochs = 0
+
             torch.save(
                 {
                     "model_state": model.state_dict(),
@@ -207,7 +199,9 @@ def main() -> None:
                         "embedding_dim": 256,
                         "base_channels": 32,
                         "dropout": 0.2,
-                        "epochs": EPOCHS,
+                        "max_epochs": MAX_EPOCHS,
+                        "patience": PATIENCE,
+                        "min_delta": MIN_DELTA,
                         "lr": LR,
                         "seed": SEED,
                     },
@@ -215,8 +209,12 @@ def main() -> None:
                 best_path,
             )
             print("Saved best ->", best_path)
+        else:
+            bad_epochs += 1
+            if bad_epochs >= PATIENCE:
+                break
 
-        # Curves logging (minimal fields expected by your plot script)
+        # ---- Curves logging ----
         append_curve_row(
             curve_csv,
             {
