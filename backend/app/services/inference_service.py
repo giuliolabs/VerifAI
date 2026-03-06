@@ -37,7 +37,6 @@ import torch
 from ml.models.fusion.multimodal_fusion import MultimodalFusionModel
 from backend.app.services.preprocess_service import extract_features_from_video
 
-
 # ------------------------------------------------
 # Model loading (once)
 # ------------------------------------------------
@@ -51,15 +50,18 @@ state = torch.load(_CHECKPOINT, map_location=_DEVICE, weights_only=False)
 _MODEL.load_state_dict(state["model_state"])
 _MODEL.eval()
 
+threshold = 0.5
+
 
 def run_inference(upload_file):
     """
-    Perform multimodal deepfake inference on a video upload.
+        Perform multimodal deepfake inference on a video upload.
 
-    Returns:
-        label (str): "real" or "fake"
-        prob_fake (float): probability of fake
-    """
+        Returns:
+            label (str): "real" or "fake"
+            prob_fake (float): probability of fake
+        """
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
         tmp.write(upload_file.file.read())
         video_path = tmp.name
@@ -67,14 +69,18 @@ def run_inference(upload_file):
     try:
         video, mfcc = extract_features_from_video(video_path)
 
-        video = video.unsqueeze(0).to(_DEVICE)  # [1, 5, 3, 224, 224]
-        mfcc = mfcc.unsqueeze(0).to(_DEVICE)    # [1, 1, 40, T]
+        video = video.unsqueeze(0).to(_DEVICE)
+        mfcc = mfcc.unsqueeze(0).to(_DEVICE)
 
         with torch.no_grad():
             logit = _MODEL(video, mfcc)
-            prob_fake = torch.sigmoid(logit).item()
+            logit_value = float(logit.squeeze().item())
+            prob_fake = float(torch.sigmoid(torch.tensor(logit_value)).item())
 
-        label = "fake" if prob_fake >= 0.5 else "real"
+        label = "fake" if prob_fake >= threshold else "real"
+
+        print(f"logit={logit_value}, prob_fake={prob_fake}, label={label}")
+
         return label, prob_fake
 
     finally:
