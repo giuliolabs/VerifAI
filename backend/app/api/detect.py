@@ -43,7 +43,7 @@ from backend.app.db.events import log_prediction
 router = APIRouter()
 
 ALLOWED_EXTENSIONS = {".mp4", ".avi", ".mov"}
-MAX_UPLOAD_MB = 10
+MAX_UPLOAD_MB = 25
 
 
 @router.post("/predict", response_model=PredictResponse, dependencies=[Depends(require_api_key)])
