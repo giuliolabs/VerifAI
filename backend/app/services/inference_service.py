@@ -47,7 +47,7 @@ _DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 _MODEL = MultimodalFusionModel().to(_DEVICE)
 _CHECKPOINT = "experiments/results/fakeavceleb_av_fusion_v1/best_model.pt"
 
-state = torch.load(_CHECKPOINT, map_location=_DEVICE)
+state = torch.load(_CHECKPOINT, map_location=_DEVICE, weights_only=False)
 _MODEL.load_state_dict(state["model_state"])
 _MODEL.eval()
 

@@ -16,3 +16,4 @@ matplotlib~=3.10.8
 pydantic
 soundfile
 timm
+joblib
