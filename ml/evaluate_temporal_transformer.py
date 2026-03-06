@@ -141,7 +141,6 @@ def main() -> None:
     print(f"\nTEMPORAL TRANSFORMER RESULTS (FF++ C23, backbone={backbone}, T=5)")
     print("Checkpoint:", ckpt_path)
     print("Num samples:", metrics.num_samples)
-    print("Threshold:", threshold)
     print("Accuracy:", metrics.accuracy)
     print("Balanced accuracy:", getattr(metrics, "balanced_accuracy", None))
     print("ROC-AUC:", metrics.auc_roc)

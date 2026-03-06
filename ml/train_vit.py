@@ -31,11 +31,10 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, WeightedRandomSampler
 from torchvision import transforms
 from PIL import Image
 from tqdm import tqdm
-from torch.utils.data import WeightedRandomSampler
 from ml.models.video.vit import build_vit_binary
 from scripts.curve_writer import append_curve_row
 
@@ -47,17 +46,21 @@ FRAMES_ROOT = Path("data/interim/frames/FaceForensics++_C23")
 SPLITS_DIR = Path("data/splits")
 
 TRAIN_CSV = SPLITS_DIR / "faceforensics++_c23_train.csv"
-VAL_CSV = SPLITS_DIR / "faceforensics++_c23_val.csv"
+VAL_CSV   = SPLITS_DIR / "faceforensics++_c23_val.csv"
 
-OUT_DIR = Path("experiments/results/ffpp_c23_vit_baseline")
+OUT_DIR  = Path("experiments/results/ffpp_c23_vit_baseline")
 RUN_NAME = "vit_baseline"
 
 IMG_SIZE = 224
-EPOCHS = 5
-LR = 1e-4
+
+MAX_EPOCHS = 15
+PATIENCE = 3
+MIN_DELTA = 1e-4  # required improvement in val_loss
+
+LR = 3e-5
 BATCH_TRAIN = 16
 BATCH_VAL = 32
-NUM_WORKERS = 0  # Windows/OneDrive safe
+NUM_WORKERS = 0
 SEED = 42
 
 
@@ -149,14 +152,11 @@ class FFPPHashedFrameDataset(Dataset):
         if not self.id_map_path.exists():
             raise FileNotFoundError(f"Missing id map: {self.id_map_path}. Re-run extract_frames_from_csv.py")
 
-        # mappings
         split_csv = TRAIN_CSV if split == "train" else VAL_CSV
         video_path_to_label = read_split_labels(split_csv)
         safe_to_vpath = read_id_map(self.id_map_path)
 
-        # Collect frame files + labels
         self.samples: list[tuple[Path, int]] = []
-
         for safe_id, vpath in safe_to_vpath.items():
             if vpath not in video_path_to_label:
                 continue
@@ -194,14 +194,14 @@ def main() -> None:
     print("Device:", device)
 
     train_ds = FFPPHashedFrameDataset("train", transform=make_transforms(train=True))
-    val_ds = FFPPHashedFrameDataset("val", transform=make_transforms(train=False))
+    val_ds   = FFPPHashedFrameDataset("val",   transform=make_transforms(train=False))
 
     print("Train frames:", len(train_ds))
     print("Val frames:", len(val_ds))
 
-    # ---- class imbalance handling ----
+    # ---- imbalance handling ----
     pos_w = compute_pos_weight_from_samples(train_ds.samples)
-    # print(f"[INFO] pos_weight (neg/pos) = {pos_w:.4f}")
+    torch.tensor([pos_w], device=device, dtype=torch.float32)
     loss_fn = nn.BCEWithLogitsLoss()
 
     # ---- Weighted sampler to balance classes per batch ----
@@ -209,7 +209,6 @@ def main() -> None:
     class_counts = np.bincount(np.array(labels, dtype=np.int64), minlength=2)
     class_counts = np.maximum(class_counts, 1)
 
-    # weight per class: inverse frequency
     class_weights = 1.0 / class_counts
     sample_weights = [class_weights[int(l)] for l in labels]
 
@@ -222,7 +221,7 @@ def main() -> None:
     train_loader = DataLoader(
         train_ds,
         batch_size=BATCH_TRAIN,
-        sampler=sampler,  # <-- use sampler instead of shuffle
+        sampler=sampler,
         shuffle=False,
         num_workers=NUM_WORKERS,
     )
@@ -234,40 +233,35 @@ def main() -> None:
     for param in model.parameters():
         param.requires_grad = False
 
-    # Unfreeze classifier head (ViTBinaryClassifier has .head)
     if hasattr(model, "head"):
         for param in model.head.parameters():
             param.requires_grad = True
     else:
-        # fallback safety (should not happen)
+        # fallback safety
         for param in model.parameters():
             param.requires_grad = True
 
-    warmup_epochs = 1
+    warmup_epochs = 3
+    optimizer = torch.optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=LR)
 
-    optimizer = torch.optim.AdamW(
-        filter(lambda p: p.requires_grad, model.parameters()),
-        lr=LR
-    )
-
-    best_val_loss = float("inf")
     curve_csv = f"experiments/logs/training_curves/{RUN_NAME}.csv"
 
-    for epoch in range(1, EPOCHS + 1):
+    best_val_loss = float("inf")
+    bad_epochs = 0
+
+    for epoch in range(1, MAX_EPOCHS + 1):
+        # ---- unfreeze after warmup ----
+        if epoch == warmup_epochs + 1:
+            for param in model.parameters():
+                param.requires_grad = True
+            optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
+
         # ---- train ----
         model.train()
         train_loss_sum = 0.0
         train_count = 0
 
-        # ---- Unfreeze full model after warmup ----
-        if epoch == warmup_epochs + 1:
-            for param in model.parameters():
-                param.requires_grad = True
-
-            optimizer = torch.optim.AdamW(model.parameters(), lr=LR)
-            # print("[INFO] Unfroze full ViT for fine-tuning.")
-
-        for images, labels, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{EPOCHS} - train"):
+        for images, labels, _ in tqdm(train_loader, desc=f"Epoch {epoch}/{MAX_EPOCHS} - train"):
             images = images.to(device)
             labels = labels.float().to(device)
 
@@ -290,7 +284,7 @@ def main() -> None:
         val_count = 0
 
         with torch.no_grad():
-            for images, labels, _ in tqdm(val_loader, desc=f"Epoch {epoch}/{EPOCHS} - val"):
+            for images, labels, _ in tqdm(val_loader, desc=f"Epoch {epoch}/{MAX_EPOCHS} - val"):
                 images = images.to(device)
                 labels = labels.float().to(device)
 
@@ -305,8 +299,12 @@ def main() -> None:
 
         print(f"Epoch {epoch}: train_loss={train_loss:.4f}  val_loss={val_loss:.4f}")
 
-        if val_loss < best_val_loss:
+        # ---- checkpoint + early stopping ----
+        improved = (best_val_loss - val_loss) > MIN_DELTA
+        if improved:
             best_val_loss = val_loss
+            bad_epochs = 0
+
             torch.save(
                 {
                     "model_state": model.state_dict(),
@@ -315,15 +313,23 @@ def main() -> None:
                     "config": {
                         "model": "vit",
                         "img_size": IMG_SIZE,
-                        "epochs": EPOCHS,
+                        "max_epochs": MAX_EPOCHS,
+                        "patience": PATIENCE,
+                        "min_delta": MIN_DELTA,
                         "lr": LR,
                         "seed": SEED,
-                        "pos_weight": pos_w,
+                        "pos_weight": float(pos_w),
+                        "sampler": "WeightedRandomSampler",
+                        "warmup_epochs": warmup_epochs,
                     },
                 },
                 best_path,
             )
             print("Saved best ->", best_path)
+        else:
+            bad_epochs += 1
+            if bad_epochs >= PATIENCE:
+                break
 
         append_curve_row(curve_csv, {
             "epoch": epoch,

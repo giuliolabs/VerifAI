@@ -1,17 +1,13 @@
-TEMPORAL TRANSFORMER RESULTS (FF++ C23, backbone=mobilenetv2, T=5)
-
+TEST RESULTS
 Num samples: 712
-Accuracy: 0.567416
-F1: 0.707780
-AUC: 0.421611
-Balanced Accuracy: 0.434841
-MCC: -0.121007
-
+Accuracy: 0.5674157303370787
+ROC-AUC: 0.4216107352679366
+Average precision: 0.7381986958923675
+Threshold: 0.5
 Confusion matrix:
 [[ 31 133]
  [175 373]]
 
-Classification report:
               precision    recall  f1-score   support
 
            0     0.1505    0.1890    0.1676       164
@@ -20,3 +16,13 @@ Classification report:
     accuracy                         0.5674       712
    macro avg     0.4438    0.4348    0.4377       712
 weighted avg     0.6020    0.5674    0.5833       712
+
+
+EXTRA
+dataset: FaceForensics++ C23
+model: Temporal Transformer
+backbone: mobilenetv2
+T: 5
+img_size: 224
+threshold: 0.5
+checkpoint: experiments\results\ffpp_c23_temporal_mobilenetv2\best_model.pt

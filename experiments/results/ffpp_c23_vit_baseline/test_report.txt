@@ -1,19 +1,26 @@
-VIT RESULTS (FaceForensics++ C23 frame baseline)
-
+TEST RESULTS
 Num samples: 3560
-Accuracy: 0.687079
-F1: 0.807931
-AUC: 0.465117
+Accuracy: 0.7696629213483146
+ROC-AUC: 0.4637836033469824
+Average precision: 0.747200395661095
+Threshold: 0.05
 Confusion matrix:
-[[ 103  717]
- [ 397 2343]]
+[[   0  820]
+ [   0 2740]]
 
-Classification report:
               precision    recall  f1-score   support
 
-           0     0.2060    0.1256    0.1561       820
-           1     0.7657    0.8551    0.8079      2740
+           0     0.0000    0.0000    0.0000       820
+           1     0.7697    1.0000    0.8698      2740
 
-    accuracy                         0.6871      3560
-   macro avg     0.4858    0.4904    0.4820      3560
-weighted avg     0.6368    0.6871    0.6578      3560
+    accuracy                         0.7697      3560
+   macro avg     0.3848    0.5000    0.4349      3560
+weighted avg     0.5924    0.7697    0.6695      3560
+
+
+EXTRA
+dataset: FaceForensics++ C23
+model: ViT frame baseline
+img_size: 224
+threshold: 0.5
+checkpoint: experiments\results\ffpp_c23_vit_baseline\best_model.pt
