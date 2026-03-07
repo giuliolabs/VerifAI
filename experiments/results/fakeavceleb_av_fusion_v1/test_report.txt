@@ -1,21 +1,21 @@
 TEST RESULTS
 Num samples: 2075
-Accuracy: 0.9985542168674699
-ROC-AUC: 0.999722269295223
-Average precision: 0.9999849780956641
+Accuracy: 0.9980722891566265
+ROC-AUC: 0.999090909090909
+Average precision: 0.9999755744086875
 Threshold: 0.5
 Confusion matrix:
-[[ 108    0]
- [   3 1964]]
+[[  55    0]
+ [   4 2016]]
 
               precision    recall  f1-score   support
 
-           0     0.9730    1.0000    0.9863       108
-           1     1.0000    0.9985    0.9992      1967
+           0     0.9322    1.0000    0.9649        55
+           1     1.0000    0.9980    0.9990      2020
 
-    accuracy                         0.9986      2075
-   macro avg     0.9865    0.9992    0.9928      2075
-weighted avg     0.9986    0.9986    0.9986      2075
+    accuracy                         0.9981      2075
+   macro avg     0.9661    0.9990    0.9820      2075
+weighted avg     0.9982    0.9981    0.9981      2075
 
 
 EXTRA
