@@ -13,7 +13,7 @@ This project uses the following datasets for deepfake detection research, benchm
 - Type: real/fake videos with diverse perturbations
 - Use: robustness evaluation under real-world degradations (blur, noise, compression, occlusion)
 - Stored at: data\raw\DeeperForensics
-- Notes: used to evaluate generalisation beyond standard deepfake artifacts.
+- Notes: used to evaluate generalization beyond standard deepfake artifacts.
 
 3) FaceForensics++_C23
 - Type: real/fake videos with multiple manipulation methods
