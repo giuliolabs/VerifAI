@@ -1,4 +1,4 @@
-# VerifAI – AI-Powered Deepfake Detection Platform
+# VerifAI - AI-Powered Deepfake Detection Platform
 
 ## Live Demo
 
