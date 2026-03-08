@@ -1,4 +1,4 @@
-Copyright (c) 2026 Giulio Labs
+Copyright © 2026 Giulio Labs
 
 All rights reserved.
 
@@ -15,5 +15,3 @@ commercial agreement has been executed.
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT.
-
-For licensing inquiries, contact: legal@yourdomain.com
