@@ -23,3 +23,5 @@ dataset: FakeAVCeleb
 model: AV Fusion v1
 mfcc_max_len: 200
 checkpoint: experiments\results\fakeavceleb_av_fusion_v1\best_model.pt
+balanced_accuracy: 0.999009900990099
+mcc: 0.9645503836108892
