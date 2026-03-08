@@ -294,7 +294,7 @@ def home_page():
             </div>
             <div class="item">
               <b>Expected response</b>
-              <span><code>{"label":"fake","prob_fake":0.93}</code></span>
+              <span><code>{"label":"fake","prob_fake":"83.92%","mode": "hybrid_av"}</code></span>
             </div>
             <div class="item">
               <b>Docs</b>
