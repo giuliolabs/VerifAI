@@ -24,7 +24,7 @@ from pathlib import Path
 
 import joblib
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as f
 from fastapi import HTTPException
 
 from ml.models.video.xception import build_xception_binary
@@ -124,7 +124,7 @@ def _score_visual_only(video: torch.Tensor) -> float:
 
     batch_size, time_steps, channels, height, width = video.shape
     frames = video.view(batch_size * time_steps, channels, height, width)
-    frames = F.interpolate(frames, size=(299, 299), mode="bilinear", align_corners=False)
+    frames = f.interpolate(frames, size=(299, 299), mode="bilinear", align_corners=False)
 
     logits = visual_model(frames).view(batch_size, time_steps)
     mean_logit = logits.mean(dim=1)
@@ -142,7 +142,7 @@ def _score_hybrid(video: torch.Tensor, mfcc: torch.Tensor) -> float:
     batch_size, time_steps, channels, height, width = video.shape
 
     frames = video.view(batch_size * time_steps, channels, height, width)
-    frames = F.interpolate(frames, size=(299, 299), mode="bilinear", align_corners=False)
+    frames = f.interpolate(frames, size=(299, 299), mode="bilinear", align_corners=False)
 
     visual_logits = visual_model(frames).view(batch_size, time_steps)
     visual_prob = torch.sigmoid(visual_logits).mean(dim=1)
