@@ -1,0 +1,26 @@
+{
+  "num_samples": 2115,
+  "accuracy": 0.9905437352245863,
+  "balanced_accuracy": 0.9951573849878934,
+  "auc_roc": 0.9956077481840194,
+  "ap": 0.9998946045033204,
+  "mcc": 0.8410515399426172,
+  "f1_weighted": 0.9913087493457116,
+  "f1_macro": 0.9142335766423357,
+  "confusion_matrix": [
+    [
+      50,
+      0
+    ],
+    [
+      20,
+      2045
+    ]
+  ],
+  "report": "              precision    recall  f1-score   support\n\n           0     0.7143    1.0000    0.8333        50\n           1     1.0000    0.9903    0.9951      2065\n\n    accuracy                         0.9905      2115\n   macro avg     0.8571    0.9952    0.9142      2115\nweighted avg     0.9932    0.9905    0.9913      2115\n",
+  "threshold": 0.25,
+  "dataset": "FakeAVCeleb",
+  "model": "Final hybrid AV (visual-all-datasets + MFCC audio + logistic fusion)",
+  "visual_checkpoint": "experiments\\results\\final_visual_all_datasets_xception\\best_model.pt",
+  "audio_checkpoint": "experiments\\results\\fakeavceleb_audio_resnet_baseline\\best_model.pt"
+}

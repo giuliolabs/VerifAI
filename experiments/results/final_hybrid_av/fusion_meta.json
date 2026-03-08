@@ -1,0 +1,12 @@
+{
+  "visual_checkpoint": "experiments\\results\\final_visual_all_datasets_xception\\best_model.pt",
+  "audio_checkpoint": "experiments\\results\\fakeavceleb_audio_resnet_baseline\\best_model.pt",
+  "best_threshold": 0.25,
+  "best_val_balanced_accuracy": 0.996558505408063,
+  "features": [
+    "visual_prob",
+    "audio_prob"
+  ],
+  "dataset": "FakeAVCeleb",
+  "model": "Final hybrid AV fusion"
+}
