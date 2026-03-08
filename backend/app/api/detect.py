@@ -78,9 +78,12 @@ async def predict(file: UploadFile = File(...)):
             detail=f"Inference failed: {type(exception).__name__}",
         ) from exception
 
-    log_prediction(file.filename, result["label"], float(result["prob_fake"]))
+    # Extract numeric value for logging (strip %)
+    numeric_prob = float(result["prob_fake"].replace("%", "")) / 100.0
+    log_prediction(file.filename, result["label"], numeric_prob)
 
     return {
         "label": result["label"],
-        "prob_fake": float(result["prob_fake"]),
+        "prob_fake": result["prob_fake"],
+        "mode": result["mode"],
     }

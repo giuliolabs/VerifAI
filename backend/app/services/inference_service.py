@@ -195,9 +195,13 @@ def run_inference(upload_file):
 
         label = "fake" if prob_fake >= threshold else "real"
 
+        # Convert to percentage with 2 decimal places
+        prob_percent = round(prob_fake * 100, 2)
+        prob_string = f"{prob_percent:.2f}%"
+
         return {
             "label": label,
-            "prob_fake": float(prob_fake),
+            "prob_fake": prob_string,
             "mode": mode,
         }
 

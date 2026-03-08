@@ -3,8 +3,8 @@ from pydantic import BaseModel, Field
 
 class PredictResponse(BaseModel):
     label: str = Field(..., examples=["real", "fake"])
-    prob_fake: float = Field(..., ge=0.0, le=1.0, examples=[0.93])
-
+    prob_fake: str = Field(..., examples=["82.91%"])
+    mode: str = Field(..., examples=["hybrid_av", "visual_only_fallback"])
 
 class ErrorResponse(BaseModel):
     detail: str
