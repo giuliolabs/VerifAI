@@ -2,44 +2,17 @@
 Detection API Endpoint
 ======================
 
-Defines the REST endpoint responsible for receiving video uploads
-and returning deepfake detection results.
+Receives uploaded video files and returns deepfake detection results.
 
-The endpoint delegates all inference to the inference service:
-- Audio-Visual inference is used when usable audio is present
-- Visual-only fallback is used when audio is absent
-
-------------------------------------------------
-DEPENDENCIES
-------------------------------------------------
-    pip install fastapi torch
-
-------------------------------------------------
-ENDPOINT
-------------------------------------------------
-POST /api/predict
-    Input:
-        - Multipart video file (mp4, avi, mov)
-    Output:
-        - JSON with prediction label and fake probability
-
-------------------------------------------------
-NOTES FOR EXAMINERS
-------------------------------------------------
-- This layer contains no ML logic.
-- All inference is delegated to the inference service.
-- Robust input validation prevents common 500/502 failures on hosted deployments.
-- Includes max upload size guard (free-tier friendly).
-- Includes MP4 signature validation (ftyp) to reject malformed uploads early.
-- Designed to be thin, testable, and extensible.
-
-Author: Giulio Dajani
-Project: VerifAI – Deepfake Detection Framework
+Inference strategy:
+- hybrid AV model when usable audio exists
+- visual-only fallback when audio is unavailable
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+
 from backend.app.services.inference_service import run_inference
 from backend.app.models.schemas import PredictResponse
 from backend.app.auth.api_key import require_api_key
@@ -96,7 +69,7 @@ async def predict(file: UploadFile = File(...)):
         )
 
     try:
-        label, prob = run_inference(file)
+        result = run_inference(file)
     except HTTPException:
         raise
     except Exception as exception:
@@ -105,6 +78,9 @@ async def predict(file: UploadFile = File(...)):
             detail=f"Inference failed: {type(exception).__name__}",
         ) from exception
 
-    log_prediction(file.filename, label, float(prob))
+    log_prediction(file.filename, result["label"], float(result["prob_fake"]))
 
-    return {"label": label, "prob_fake": float(prob)}
+    return {
+        "label": result["label"],
+        "prob_fake": float(result["prob_fake"]),
+    }

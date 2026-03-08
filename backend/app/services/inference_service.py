@@ -1,85 +1,34 @@
 """
-Inference Service – Multimodal Deepfake Detection (AV + Visual Fallback)
-=========================================================================
+Inference Service – Final VerifAI Runtime
+=========================================
 
-This module encapsulates all logic required to:
-- Load trained deepfake detection models
-- Preprocess uploaded videos
-- Detect whether usable audio is available
-- Dynamically choose the most appropriate model at runtime
-- Run inference and return a fake probability
+Runtime strategy:
+- If usable audio is available:
+    -> use final_hybrid_av
+- Otherwise:
+    -> use final_visual_all_datasets_xception
 
-------------------------------------------------
-DEPENDENCIES
-------------------------------------------------
-    pip install torch torchvision numpy opencv-python librosa timm
-
-------------------------------------------------
-DEPLOYED INFERENCE STRATEGY
-------------------------------------------------
-Primary model:
-- fakeavceleb_av_fusion_v1
-- Type: Audio-Visual (AV) fusion
-- Dataset: FakeAVCeleb_v1.2
-
-Fallback model:
-- ffpp_c23_vit_baseline
-- Type: Visual-only
-- Dataset: FaceForensics++ C23
-- Used only when the uploaded video has no usable audio track
-
-------------------------------------------------
-RUNTIME DECISION LOGIC
-------------------------------------------------
-If the uploaded video contains usable audio:
-    -> run the AV fusion model
-
-If the uploaded video has no audio, or audio features are empty:
-    -> run the visual-only fallback model
-
-------------------------------------------------
-OUTPUT INTERPRETATION
-------------------------------------------------
-Both models are expected to output a single logit.
-
-The logit is converted to a fake probability using:
-    prob_fake = sigmoid(logit)
-
-Final class decision:
-    label = "fake" if prob_fake >= threshold else "real"
-
-For the visual-only fallback:
-- multiple extracted frames are scored independently
-- frame logits are averaged
-- sigmoid is applied once to the averaged logit
-This is more stable than relying on a single frame.
-
-------------------------------------------------
-NOTES FOR EXAMINERS
-------------------------------------------------
-- Models are loaded once at import time for efficient inference.
-- Temporary uploaded files are cleaned automatically.
-- The AV model is prioritized because it uses both visual and audio evidence.
-- Silent or audio-stripped videos are handled explicitly via a visual fallback.
-- The visual fallback model is frame-based, so multiple representative frames
-  are evaluated and their logits are averaged before making a final decision.
-- This avoids unreliable behavior caused by feeding empty audio features
-  into a multimodal fusion model and improves stability for silent clips.
-
-Author: Giulio Dajani
-Project: VerifAI – Deepfake Detection Framework
+This service:
+- loads the final trained models once
+- preprocesses uploaded videos
+- chooses hybrid or visual-only fallback automatically
+- returns label + fake probability + inference mode
 """
 
 from __future__ import annotations
 
+import json
 import os
 import tempfile
+from pathlib import Path
 
+import joblib
 import torch
+import torch.nn.functional as F
 from fastapi import HTTPException
 
-from ml.models.fusion.multimodal_fusion import MultimodalFusionModel
-from ml.models.video.vit import build_vit_binary
+from ml.models.video.xception import build_xception_binary
+from ml.models.audio.mfcc_cnn import build_mfcc_resnet18_binary
 from backend.app.services.preprocess_service import extract_features_from_video
 
 
@@ -88,39 +37,126 @@ from backend.app.services.preprocess_service import extract_features_from_video
 # ------------------------------------------------
 
 _DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-_THRESHOLD = 0.5
 
-_AV_CHECKPOINT = "experiments/results/fakeavceleb_av_fusion_v1/best_model.pt"
-_VISUAL_CHECKPOINT = "experiments/results/ffpp_c23_vit_baseline/best_model.pt"
+FINAL_HYBRID_DIR = Path("experiments/results/final_hybrid_av")
+FINAL_VISUAL_DIR = Path("experiments/results/final_visual_all_datasets_xception")
+FINAL_AUDIO_DIR = Path("experiments/results/fakeavceleb_audio_resnet_baseline")
 
+_VISUAL_CHECKPOINT = FINAL_VISUAL_DIR / "best_model.pt"
+_AUDIO_CHECKPOINT = FINAL_AUDIO_DIR / "best_model.pt"
+_FUSION_MODEL_PATH = FINAL_HYBRID_DIR / "fusion_model.joblib"
+_FUSION_META_PATH = FINAL_HYBRID_DIR / "fusion_meta.json"
 
-# ------------------------------------------------
-# Load primary Audio-Visual fusion model
-# ------------------------------------------------
-
-av_model = MultimodalFusionModel().to(_DEVICE)
-av_state = torch.load(_AV_CHECKPOINT, map_location=_DEVICE, weights_only=False)
-av_model.load_state_dict(av_state["model_state"])
-av_model.eval()
+_VISUAL_ONLY_THRESHOLD = 0.5
 
 
 # ------------------------------------------------
-# Load visual-only fallback model
+# Helpers
 # ------------------------------------------------
 
-visual_model = build_vit_binary(
-    model_name="vit_base_patch16_224",
-    pretrained=False,
-    img_size=224,
-).to(_DEVICE)
+def _torch_load_compat(path: Path, device: str):
+    try:
+        return torch.load(path, map_location=device, weights_only=False)
+    except TypeError:
+        return torch.load(path, map_location=device)
 
-visual_state = torch.load(_VISUAL_CHECKPOINT, map_location=_DEVICE, weights_only=False)
+
+def _validate_artifacts() -> None:
+    missing = []
+    for path in [
+        _VISUAL_CHECKPOINT,
+        _AUDIO_CHECKPOINT,
+        _FUSION_MODEL_PATH,
+        _FUSION_META_PATH,
+    ]:
+        if not path.exists():
+            missing.append(str(path))
+
+    if missing:
+        missing_text = "\n".join(missing)
+        raise RuntimeError(f"Missing required inference artifacts:\n{missing_text}")
+
+
+_validate_artifacts()
+
+
+# ------------------------------------------------
+# Load final visual backbone
+# ------------------------------------------------
+
+visual_model = build_xception_binary(pretrained=False).to(_DEVICE)
+visual_state = _torch_load_compat(_VISUAL_CHECKPOINT, _DEVICE)
 visual_model.load_state_dict(visual_state["model_state"])
 visual_model.eval()
 
 
 # ------------------------------------------------
-# Inference
+# Load final audio backbone
+# ------------------------------------------------
+
+audio_model = build_mfcc_resnet18_binary(pretrained=False).to(_DEVICE)
+audio_state = _torch_load_compat(_AUDIO_CHECKPOINT, _DEVICE)
+audio_model.load_state_dict(audio_state["model_state"])
+audio_model.eval()
+
+
+# ------------------------------------------------
+# Load final fusion model + threshold
+# ------------------------------------------------
+
+fusion_model = joblib.load(_FUSION_MODEL_PATH)
+fusion_meta = json.loads(_FUSION_META_PATH.read_text(encoding="utf-8"))
+HYBRID_THRESHOLD = float(fusion_meta.get("best_threshold", 0.5))
+
+
+# ------------------------------------------------
+# Internal scoring
+# ------------------------------------------------
+
+@torch.no_grad()
+def _score_visual_only(video: torch.Tensor) -> float:
+    """
+    video: [1, T, 3, 224, 224]
+    Returns fake probability from visual model only.
+    """
+    if video.ndim != 5 or video.shape[1] == 0:
+        raise HTTPException(status_code=400, detail="No valid video frames could be extracted.")
+
+    batch_size, time_steps, channels, height, width = video.shape
+    frames = video.view(batch_size * time_steps, channels, height, width)
+    frames = F.interpolate(frames, size=(299, 299), mode="bilinear", align_corners=False)
+
+    logits = visual_model(frames).view(batch_size, time_steps)
+    mean_logit = logits.mean(dim=1)
+    prob_fake = float(torch.sigmoid(mean_logit.squeeze()).item())
+    return prob_fake
+
+
+@torch.no_grad()
+def _score_hybrid(video: torch.Tensor, mfcc: torch.Tensor) -> float:
+    """
+    video: [1, T, 3, 224, 224]
+    mfcc:  [1, 1, 40, 200]
+    Returns fake probability from late-fusion hybrid model.
+    """
+    batch_size, time_steps, channels, height, width = video.shape
+
+    frames = video.view(batch_size * time_steps, channels, height, width)
+    frames = F.interpolate(frames, size=(299, 299), mode="bilinear", align_corners=False)
+
+    visual_logits = visual_model(frames).view(batch_size, time_steps)
+    visual_prob = torch.sigmoid(visual_logits).mean(dim=1)
+
+    audio_logits = audio_model(mfcc).squeeze(1)
+    audio_prob = torch.sigmoid(audio_logits)
+
+    fusion_features = torch.stack([visual_prob, audio_prob], dim=1).cpu().numpy()
+    prob_fake = float(fusion_model.predict_proba(fusion_features)[:, 1][0])
+    return prob_fake
+
+
+# ------------------------------------------------
+# Public inference
 # ------------------------------------------------
 
 def run_inference(upload_file):
@@ -128,10 +164,11 @@ def run_inference(upload_file):
     Perform deepfake inference on an uploaded video.
 
     Returns:
-        label (str): "real" or "fake"
-        prob_fake (float): probability that the input is fake
+        dict with:
+        - label
+        - prob_fake
+        - mode
     """
-
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
         tmp.write(upload_file.file.read())
         video_path = tmp.name
@@ -145,26 +182,24 @@ def run_inference(upload_file):
         if video.shape[1] == 0:
             raise HTTPException(status_code=400, detail="No valid video frames could be extracted.")
 
-        has_audio = not torch.all(mfcc == 0)
+        has_audio = mfcc.numel() > 0 and not torch.all(mfcc == 0)
 
-        with torch.no_grad():
-            if has_audio:
-                logit = av_model(video, mfcc)
-                prob_fake = float(torch.sigmoid(logit.squeeze()).item())
+        if has_audio:
+            prob_fake = _score_hybrid(video, mfcc)
+            threshold = HYBRID_THRESHOLD
+            mode = "hybrid_av"
+        else:
+            prob_fake = _score_visual_only(video)
+            threshold = _VISUAL_ONLY_THRESHOLD
+            mode = "visual_only_fallback"
 
-            else:
-                all_frame_logits = []
+        label = "fake" if prob_fake >= threshold else "real"
 
-                for frame_index in range(video.shape[1]):
-                    frame = video[:, frame_index, :, :, :]   # [1, 3, 224, 224]
-                    frame_logit = visual_model(frame)
-                    all_frame_logits.append(float(frame_logit.squeeze().item()))
-
-                logit_value = sum(all_frame_logits) / len(all_frame_logits)
-                prob_fake = float(torch.sigmoid(torch.tensor(logit_value, device=_DEVICE)).item())
-
-        label = "fake" if prob_fake >= _THRESHOLD else "real"
-        return label, prob_fake
+        return {
+            "label": label,
+            "prob_fake": float(prob_fake),
+            "mode": mode,
+        }
 
     finally:
         if os.path.exists(video_path):
