@@ -1,0 +1,94 @@
+FINAL VISUAL MODEL RESULTS (ALL DATASETS)
+
+{
+  "num_samples": 3567,
+  "accuracy": 0.8842164283711803,
+  "balanced_accuracy": 0.9032308481116843,
+  "auc_roc": 0.9770980161103889,
+  "ap": 0.9932148525273926,
+  "mcc": 0.726738599943934,
+  "f1_weighted": 0.8901619879533977,
+  "f1_macro": 0.8529879940160185,
+  "confusion_matrix": [
+    [
+      755,
+      50
+    ],
+    [
+      363,
+      2399
+    ]
+  ],
+  "report": "              precision    recall  f1-score   support\n\n           0     0.6753    0.9379    0.7852       805\n           1     0.9796    0.8686    0.9207      2762\n\n    accuracy                         0.8842      3567\n   macro avg     0.8274    0.9032    0.8530      3567\nweighted avg     0.9109    0.8842    0.8902      3567\n"
+}
+
+PER DATASET:
+
+DeeperForensics
+{
+  "num_samples": 740,
+  "accuracy": 0.9945945945945946,
+  "balanced_accuracy": 0.9865771812080537,
+  "auc_roc": 1.0,
+  "ap": 1.0,
+  "mcc": 0.983164354629983,
+  "f1_weighted": 0.9945669384840667,
+  "f1_macro": 0.9915109382707552,
+  "confusion_matrix": [
+    [
+      591,
+      0
+    ],
+    [
+      4,
+      145
+    ]
+  ],
+  "report": "              precision    recall  f1-score   support\n\n           0     0.9933    1.0000    0.9966       591\n           1     1.0000    0.9732    0.9864       149\n\n    accuracy                         0.9946       740\n   macro avg     0.9966    0.9866    0.9915       740\nweighted avg     0.9946    0.9946    0.9946       740\n"
+}
+
+FaceForensics++ C23
+{
+  "num_samples": 712,
+  "accuracy": 0.4957865168539326,
+  "balanced_accuracy": 0.5677630407690938,
+  "auc_roc": 0.5880585721915614,
+  "ap": 0.8358112873072825,
+  "mcc": 0.11633212777533662,
+  "f1_weighted": 0.5286988221911797,
+  "f1_macro": 0.4802761200858046,
+  "confusion_matrix": [
+    [
+      115,
+      49
+    ],
+    [
+      310,
+      238
+    ]
+  ],
+  "report": "              precision    recall  f1-score   support\n\n           0     0.2706    0.7012    0.3905       164\n           1     0.8293    0.4343    0.5701       548\n\n    accuracy                         0.4958       712\n   macro avg     0.5499    0.5678    0.4803       712\nweighted avg     0.7006    0.4958    0.5287       712\n"
+}
+
+FakeAVCeleb
+{
+  "num_samples": 2115,
+  "accuracy": 0.9763593380614657,
+  "balanced_accuracy": 0.978135593220339,
+  "auc_roc": 0.9908716707021793,
+  "ap": 0.9997801580443801,
+  "mcc": 0.6911305864491345,
+  "f1_weighted": 0.980053964333677,
+  "f1_macro": 0.824956632281473,
+  "confusion_matrix": [
+    [
+      49,
+      1
+    ],
+    [
+      49,
+      2016
+    ]
+  ],
+  "report": "              precision    recall  f1-score   support\n\n           0     0.5000    0.9800    0.6622        50\n           1     0.9995    0.9763    0.9878      2065\n\n    accuracy                         0.9764      2115\n   macro avg     0.7498    0.9781    0.8250      2115\nweighted avg     0.9877    0.9764    0.9801      2115\n"
+}

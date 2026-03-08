@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "project": "VerifAI",
+    "run_name": "av_fusion_v1",
+    "timestamp": "2026-03-07T21:35:31",
+    "python": "3.12.6 (tags/v3.12.6:a4a2d2b, Sep  6 2024, 20:11:23) [MSC v.1940 64 bit (AMD64)]",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cwd": "C:\\Users\\dajan\\OneDrive - University of Greenwich\\Desktop\\UniversityOfGreenwich\\3rd year\\COMP1682\\deepfake-framework",
+    "git_commit": "a274734a6dc164d16480ca1c6b24737b04d7eec0",
+    "git_branch": "main",
+    "git_dirty": "M backend/__pycache__/main.cpython-312.pyc\n M backend/app/api/__pycache__/detect.cpython-312.pyc\n M backend/app/services/__pycache__/inference_service.cpython-312.pyc\n M backend/app/services/__pycache__/preprocess_service.cpython-312.pyc\n M experiments/logs/training_curves/av_fusion_v1.csv\n M experiments/results/fakeavceleb_av_fusion_v1/fusion_log.csv\n M ml/__pycache__/__init__.cpython-312.pyc\n M ml/__pycache__/data_loader.cpython-312.pyc\n M ml/__pycache__/evaluate_audio_resnet.cpython-312.pyc\n M ml/__pycache__/evaluate_av_fusion.cpython-312.pyc\n M ml/__pycache__/train.cpython-312.pyc\n M ml/__pycache__/train_audio_resnet.cpython-312.pyc\n M ml/__pycache__/train_av_fusion.cpython-312.pyc\n M ml/models/__pycache__/__init__.cpython-312.pyc\n M ml/models/video/__pycache__/__init__.cpython-312.pyc\n M ml/models/video/__pycache__/mobilenet_baseline.cpython-312.pyc\n?? backend/app/api/__pycache__/explain.cpython-312.pyc\n?? backend/app/api/__pycache__/ui.cpython-312.pyc\n?? backend/app/auth/__pycache__/\n?? backend/app/db/__pycache__/\n?? backend/app/models/__pycache__/\n?? data/verifai_events.sqlite\n?? experiments/results/fakeavceleb_av_fusion_v1/best_model.pt\n?? ml/__pycache__/augmentations.cpython-312.pyc\n?? ml/__pycache__/evaluate.cpython-312.pyc\n?? ml/__pycache__/evaluate_temporal_transformer.cpython-312.pyc\n?? ml/__pycache__/evaluate_vit.cpython-312.pyc\n?? ml/__pycache__/evaluate_wav_encoder.cpython-312.pyc\n?? ml/__pycache__/evaluation_consolidation.cpython-312.pyc\n?? ml/__pycache__/metrics.cpython-312.pyc\n?? ml/__pycache__/train_final_hybrid_av.cpython-312.pyc\n?? ml/__pycache__/train_final_visual_all_datasets.cpython-312.pyc\n?? ml/__pycache__/train_temporal_transformer.cpython-312.pyc\n?? ml/__pycache__/train_vit.cpython-312.pyc\n?? ml/__pycache__/train_wav_encoder.cpython-312.pyc\n?? ml/__pycache__/video_sequence_data_loader.cpython-312.pyc\n?? ml/__pycache__/wav_data_loader.cpython-312.pyc\n?? ml/models/audio/__pycache__/wav_encoder.cpython-312.pyc\n?? ml/models/video/__pycache__/temporal_transformer.cpython-312.pyc\n?? ml/models/video/__pycache__/vit.cpython-312.pyc\n?? scripts/__pycache__/\n?? venv/",
+    "torch_version": "2.9.1+cpu",
+    "cuda_available": false,
+    "cuda_version": null,
+    "cudnn_version": null,
+    "gpu_name": null
+  },
+  "payload": {
+    "task": "train",
+    "model": "multimodal_fusion",
+    "dataset": "FakeAVCeleb_v1.2",
+    "split": "train/val",
+    "metrics": {
+      "best_val_loss": 0.004283127343057808,
+      "best_epoch": 3,
+      "best_val_acc": 0.9995176073323685,
+      "best_val_auc": 0.999919335323062,
+      "best_val_f1": 0.9997529033852236
+    },
+    "artifacts": [
+      "experiments\\results\\fakeavceleb_av_fusion_v1\\best_model.pt",
+      "experiments\\results\\fakeavceleb_av_fusion_v1\\fusion_log.csv",
+      "experiments/logs/training_curves/av_fusion_v1.csv"
+    ],
+    "notes": "Fusion baseline 5 epochs. Logs written to fusion_log.csv + central VerifAI logs."
+  }
+}

@@ -1,0 +1,5 @@
+av_category,num_samples,num_real,num_fake,accuracy,balanced_accuracy,precision,recall,f1,auc_roc,average_precision,mcc,tn,fp,fn,tp,mean_prob_fake
+FakeVideo-FakeAudio,1043,0,1043,1.0,,1.0,1.0,1.0,,,,0,0,0,1043,1.0
+FakeVideo-RealAudio,972,0,972,0.9979423868312757,,1.0,0.9979423868312757,0.9989701338825953,,,,0,0,2,970,0.9979123673229305
+RealVideo-FakeAudio,50,0,50,0.98,,1.0,0.98,0.98989898989899,,,,0,0,1,49,0.9718726754188538
+RealVideo-RealAudio,50,50,0,0.96,,0.0,0.0,0.0,,,,48,2,0,0,0.07796308152377605
