@@ -1,6 +1,6 @@
 """
-Build FakeAVCeleb_v1.2 manifest + train/val/test splits
-=======================================================
+Build FakeAVCeleb_v1.2 manifest + subject-level train/val/test splits
+=====================================================================
 
 Dataset layout (as in your folder tree):
   data/raw/FakeAVCeleb_v1.2/
@@ -23,6 +23,14 @@ This version builds labels for overall clip authenticity:
 So the model learns whether the whole clip is fake in any modality.
 
 ------------------------------------------------
+SPLITTING STRATEGY
+------------------------------------------------
+This version performs SUBJECT-LEVEL splitting:
+- each subject_id appears in only one split
+- reduces identity leakage across train/val/test
+- provides a more realistic evaluation
+
+------------------------------------------------
 DEPENDENCIES
 ------------------------------------------------
     pip install pandas tqdm
@@ -39,13 +47,6 @@ OUTPUTS
     data/splits/fakeavceleb_train.csv
     data/splits/fakeavceleb_val.csv
     data/splits/fakeavceleb_test.csv
-
-------------------------------------------------
-NOTES
-------------------------------------------------
-- Splits are currently created at video level.
-- This is sufficient for the current pipeline and relabeling fix.
-- A later improvement would be subject-level splitting to reduce identity leakage.
 
 Author: Giulio Dajani
 Project: VerifAI – Deepfake Detection Framework
@@ -89,20 +90,20 @@ def make_video_id(dataset: str, path: Path, raw_root: Path):
     return f"{dataset}__{safe}"
 
 
-def split_ids(items, seed=42):
+def split_subject_ids(subject_ids, seed=42):
     rng = random.Random(seed)
-    items = list(items)
-    rng.shuffle(items)
+    subject_ids = list(subject_ids)
+    rng.shuffle(subject_ids)
 
-    total = len(items)
+    total = len(subject_ids)
     train_end = int(0.8 * total)
     val_end = train_end + int(0.1 * total)
 
-    train_ids = items[:train_end]
-    val_ids = items[train_end:val_end]
-    test_ids = items[val_end:]
+    train_subjects = set(subject_ids[:train_end])
+    val_subjects = set(subject_ids[train_end:val_end])
+    test_subjects = set(subject_ids[val_end:])
 
-    return train_ids, val_ids, test_ids
+    return train_subjects, val_subjects, test_subjects
 
 
 def parse_fakeavceleb_fields(video_path: Path, raw_root: Path):
@@ -150,34 +151,63 @@ def main():
 
     df = pd.DataFrame(rows)
 
+    if len(df) == 0:
+        raise RuntimeError("No videos found. Check the FakeAVCeleb dataset path.")
+
     out_manifest = Path("data/metadata/fakeavceleb_manifest.csv")
     out_manifest.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_manifest, index=False)
 
     print("\nSaved manifest:", out_manifest)
     print("Total rows:", len(df))
+    print("Unique subjects:", df["subject_id"].nunique())
     print("Label distribution:\n", df["label"].value_counts(dropna=False))
     print("\nAV category distribution:\n", df["av_category"].value_counts(dropna=False))
 
-    ids = df["video_id"].tolist()
-    train_ids, val_ids, test_ids = split_ids(ids, seed=42)
+    unique_subjects = sorted(df["subject_id"].dropna().astype(str).unique().tolist())
+    train_subjects, val_subjects, test_subjects = split_subject_ids(unique_subjects, seed=42)
 
-    Path("data/splits").mkdir(parents=True, exist_ok=True)
+    train_df = df[df["subject_id"].astype(str).isin(train_subjects)].copy()
+    val_df = df[df["subject_id"].astype(str).isin(val_subjects)].copy()
+    test_df = df[df["subject_id"].astype(str).isin(test_subjects)].copy()
 
-    def save_split(split_name, id_list):
-        split_df = df[df["video_id"].isin(id_list)].copy()
-        out_path = Path("data/splits") / f"fakeavceleb_{split_name}.csv"
-        split_df.to_csv(out_path, index=False)
+    splits_dir = Path("data/splits")
+    splits_dir.mkdir(parents=True, exist_ok=True)
 
-        print(f"\nSaved split: {out_path}  rows={len(split_df)}")
-        print(f"{split_name} label distribution:")
+    train_path = splits_dir / "fakeavceleb_train.csv"
+    val_path = splits_dir / "fakeavceleb_val.csv"
+    test_path = splits_dir / "fakeavceleb_test.csv"
+
+    train_df.to_csv(train_path, index=False)
+    val_df.to_csv(val_path, index=False)
+    test_df.to_csv(test_path, index=False)
+
+    def print_split_stats(name: str, split_df: pd.DataFrame):
+        print(f"\n{name} split")
+        print("Rows:", len(split_df))
+        print("Unique subjects:", split_df['subject_id'].nunique())
+        print("Label distribution:")
         print(split_df["label"].value_counts(dropna=False))
-        print(f"\n{split_name} AV category distribution:")
+        print("\nAV category distribution:")
         print(split_df["av_category"].value_counts(dropna=False))
 
-    save_split("train", train_ids)
-    save_split("val", val_ids)
-    save_split("test", test_ids)
+    print("\nSaved split files:")
+    print(train_path)
+    print(val_path)
+    print(test_path)
+
+    print_split_stats("Train", train_df)
+    print_split_stats("Val", val_df)
+    print_split_stats("Test", test_df)
+
+    overlap_train_val = train_subjects.intersection(val_subjects)
+    overlap_train_test = train_subjects.intersection(test_subjects)
+    overlap_val_test = val_subjects.intersection(test_subjects)
+
+    print("\nSubject overlap checks:")
+    print("Train ∩ Val :", len(overlap_train_val))
+    print("Train ∩ Test:", len(overlap_train_test))
+    print("Val ∩ Test  :", len(overlap_val_test))
 
 
 if __name__ == "__main__":

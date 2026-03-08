@@ -150,7 +150,6 @@ def run_inference(upload_file):
         with torch.no_grad():
             if has_audio:
                 logit = av_model(video, mfcc)
-                logit_value = float(logit.squeeze().item())
                 prob_fake = float(torch.sigmoid(logit.squeeze()).item())
 
             else:
