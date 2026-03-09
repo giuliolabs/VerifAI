@@ -1,18 +1,66 @@
+"""
+Frontend UI Router – VerifAI Web Interface
+==========================================
+
+This module exposes a minimal browser-based interface for interacting
+with the VerifAI API. It allows users to upload a video file and view
+the JSON response returned by the multimodal deepfake detection system.
+
+The UI is intentionally lightweight and embedded directly in the backend
+to avoid requiring a separate frontend framework. It is designed purely
+for demonstration, local testing, and evaluation purposes.
+
+Author: Giulio Dajani 001343717
+Project: VerifAI – Deepfake Detection Framework
+Copyright © 2026 Giulio Labs
+"""
+
+# Import APIRouter to define modular route
 from fastapi import APIRouter
+
+# Import HTMLResponse so the endpoint returns rendered HTML
 from fastapi.responses import HTMLResponse
 
+
+# Create router instance for UI-related endpoints
 router = APIRouter()
 
 @router.get("/", response_class=HTMLResponse)
 def home_page():
+    """
+    Root endpoint serving the VerifAI web interface.
+    Returns a complete HTML page containing:
+    - Styled upload interface
+    - Progress feedback
+    - API integration logic
+    """
     return """
 <!doctype html>
 <html lang="en">
 <head>
+  <!-- 
+  ==================================================
+  HEAD SECTION
+  ==================================================
+  - Defines document metadata
+  - Sets viewport for responsiveness
+  - Contains full CSS styling for the UI
+  - Uses a dark, modern gradient-based theme
+  -->
+
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>VerifAI - Deepfake Detection</title>
   <style>
+    /*
+    ==================================================
+    GLOBAL THEME & DESIGN SYSTEM
+    ==================================================
+    - Defines color palette using CSS variables
+    - Establishes dark theme with accent gradients
+    - Provides consistent border radius and shadow styling
+    */
+  
     :root{
       --bg:#070A12;
       --card:#0C1224;
@@ -222,6 +270,33 @@ def home_page():
   </style>
 </head>
 <body>
+  <!-- 
+  ==================================================
+  MAIN LAYOUT STRUCTURE
+  ==================================================
+  - Wrapper container centers content
+  - Header section with logo + branding
+  - Two-column responsive grid layout
+  -->
+  
+  <!-- 
+  LEFT CARD: Detection Interface
+  --------------------------------------------------
+  - File selection area
+  - Upload + detect button
+  - Progress bar visualization
+  - Result panel displaying API JSON response
+  -->
+
+  <!-- 
+  RIGHT CARD: Informational Panel
+  --------------------------------------------------
+  - Explains what the demo does
+  - Shows endpoint being used
+  - Displays example response format
+  - Mentions Swagger documentation
+  -->
+  
   <div class="wrap">
     <div class="header">
       <div class="brand">
@@ -307,6 +382,21 @@ def home_page():
   </div>
 
 <script>
+/*
+==================================================
+CLIENT-SIDE JAVASCRIPT LOGIC
+==================================================
+This script handles:
+- File selection tracking
+- Client-side size validation (25MB limit)
+- API request construction (multipart upload)
+- Optional API key header injection
+- Progress bar updates
+- Badge state changes (Idle / Running / OK / Error)
+- Displaying JSON response from backend
+*/
+
+// Store references to key UI elements
 const fileEl = document.getElementById("file");
 const fileInfo = document.getElementById("fileInfo");
 const detectBtn = document.getElementById("detectBtn");
@@ -315,18 +405,39 @@ const outEl = document.getElementById("out");
 const badgeEl = document.getElementById("badge");
 const barFill = document.getElementById("barFill");
 
-// TODO: change this to your real key (or set it to "" to disable auth on backend)
+// API key placeholder for secured endpoints
 const API_KEY = "verifai_2026_v1.0_key_2102";
 
+/*
+--------------------------------------------------
+Helper: Update badge appearance + label
+--------------------------------------------------
+Used to visually indicate system state:
+Idle, Ready, Running, OK, Error, Network failure
+*/
 function setBadge(kind, text){
   badgeEl.className = "badge" + (kind ? (" " + kind) : "");
   badgeEl.textContent = text;
 }
 
+/*
+--------------------------------------------------
+Helper: Update progress bar width
+--------------------------------------------------
+Provides simple visual feedback during upload & inference
+*/
 function setProgress(pct){
   barFill.style.width = pct + "%";
 }
 
+/*
+--------------------------------------------------
+File Selection Listener
+--------------------------------------------------
+- Displays selected filename and size
+- Enables detect button
+- Resets UI state
+*/
 fileEl.addEventListener("change", () => {
   if(!fileEl.files.length){
     fileInfo.textContent = "No file selected";
@@ -342,6 +453,15 @@ fileEl.addEventListener("change", () => {
   outEl.textContent = "{}";
 });
 
+/*
+--------------------------------------------------
+Main Inference Function
+--------------------------------------------------
+- Performs client-side file size validation
+- Sends POST request to /api/predict
+- Handles response or error states
+- Updates UI accordingly
+*/
 async function run(){
   const f = fileEl.files[0];
   if(!f) return;
