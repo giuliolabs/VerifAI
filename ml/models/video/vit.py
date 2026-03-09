@@ -1,15 +1,26 @@
 """
-Vision Transformer (ViT) for frame-based deepfake detection (binary).
+Vision Transformer (ViT) for Frame-Based Deepfake Detection (Binary)
+=====================================================================
 
-- Uses timm models (e.g. vit_base_patch16_224).
-- Returns a single logit per image: [B, 1]
-- Also exposes a feature extractor mode to get embeddings for temporal models.
+This module implements a Vision Transformer (ViT) model for
+frame-level deepfake detection within the VerifAI framework.
+
+Key design decisions:
+- Uses timm library models (e.g. vit_base_patch16_224)
+- Supports feature-extractor mode for temporal modelling
+- Supports binary classification via a single-logit head
+
+The feature extractor mode is particularly important for:
+- Temporal Transformer models
+- Multimodal fusion experiments
+- Embedding analysis
 
 Dependencies:
     python -m pip install timm torch
 
-Author: Giulio Dajani
+Author: Giulio Dajani 001343717
 Project: VerifAI – Deepfake Detection Framework
+Copyright © 2026 Giulio Labs
 """
 
 from __future__ import annotations
@@ -17,16 +28,28 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
+# timm provides flexible access to many ViT variants
 try:
     import timm
 except Exception as exc:
-    raise ImportError("Missing dependency: timm. Install with: python -m pip install timm") from exc
+    raise ImportError(
+        "Missing dependency: timm. Install with: python -m pip install timm"
+    ) from exc
 
+
+# ------------------------------------------------
+# Feature Extractor Wrapper
+# ------------------------------------------------
 
 class ViTFeatureExtractor(nn.Module):
     """
     Wraps a timm ViT-like model in feature-extractor mode.
-    Output: [B, D]
+
+    Output:
+        embeddings [B, D]
+
+    This abstraction ensures compatibility across different
+    timm ViT variants.
     """
 
     def __init__(self, timm_model: nn.Module):
@@ -34,38 +57,54 @@ class ViTFeatureExtractor(nn.Module):
         self.model = timm_model
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # timm convention: forward_features returns [B, D] for ViT-like models
+        """
+        Extract feature embeddings from the ViT backbone.
+        """
+
+        # Preferred approach: use forward_features if available
         if hasattr(self.model, "forward_features"):
             feats = self.model.forward_features(x)
         else:
-            # fallback: forward() may already return features if num_classes=0
+            # Fallback if model already returns features directly
             feats = self.model(x)
 
-        # Some models may return tuple/list
+        # Some timm models may return tuple or list
         if isinstance(feats, (tuple, list)):
             feats = feats[0]
 
-        # timm ViT may return:
-        # - [B, D] already pooled, or
-        # - [B, N, D] tokens (CLS + patches)
+        # ViT models may return:
+        # - [B, D] if already pooled
+        # - [B, N, D] token sequence (CLS + patches)
         if feats.ndim == 3:
-            # Use CLS token by default
-            feats = feats[:, 0, :]  # [B, D]
+            # Use CLS token representation by default
+            feats = feats[:, 0, :]
 
+        # Ensure final shape is valid embedding format
         if feats.ndim != 2:
-            raise RuntimeError(f"Expected [B,D] features after pooling, got shape: {tuple(feats.shape)}")
+            raise RuntimeError(
+                f"Expected [B,D] features after pooling, got shape: {tuple(feats.shape)}"
+            )
 
         return feats
 
 
+# ------------------------------------------------
+# Binary Classification Wrapper
+# ------------------------------------------------
+
 class ViTBinaryClassifier(nn.Module):
     """
-    ViT feature extractor + linear head -> binary logit [B,1]
+    ViT feature extractor + linear classification head.
+
+    Produces a single logit per image: [B,1]
     """
 
     def __init__(self, encoder: nn.Module, embed_dim: int):
         super().__init__()
+
         self.encoder = encoder
+
+        # Single logit output suitable for BCEWithLogitsLoss
         self.head = nn.Linear(embed_dim, 1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -74,16 +113,24 @@ class ViTBinaryClassifier(nn.Module):
         return logits
 
 
+# ------------------------------------------------
+# Builder: Feature Extractor
+# ------------------------------------------------
+
 def build_vit_feature_extractor(
     model_name: str = "vit_base_patch16_224",
     pretrained: bool = True,
     img_size: int = 224,
 ) -> tuple[nn.Module, int]:
     """
+    Build a ViT model in feature-extractor mode.
+
     Returns:
         (feature_extractor, embed_dim)
     """
-    # num_classes=0 makes timm return features [no classification head]
+
+    # num_classes=0 removes classification head,
+    # global_pool="avg" ensures pooled feature output
     backbone = timm.create_model(
         model_name,
         pretrained=pretrained,
@@ -92,19 +139,26 @@ def build_vit_feature_extractor(
         global_pool="avg",
     )
 
-    # embed dim usually accessible as num_features in timm
+    # Most timm models expose embedding dimension via num_features
     embed_dim = int(getattr(backbone, "num_features", 0))
+
     if embed_dim <= 0:
-        # fallback: try a dummy forward to infer dim
+        # Fallback: infer embedding dimension via dummy forward pass
         with torch.no_grad():
             dummy = torch.zeros(1, 3, img_size, img_size)
             feats = backbone(dummy)
+
             if isinstance(feats, (tuple, list)):
                 feats = feats[0]
+
             embed_dim = int(feats.shape[-1])
 
     return ViTFeatureExtractor(backbone), embed_dim
 
+
+# ------------------------------------------------
+# Builder: Binary Classifier
+# ------------------------------------------------
 
 def build_vit_binary(
     model_name: str = "vit_base_patch16_224",
@@ -117,9 +171,13 @@ def build_vit_binary(
     Output:
         logits [B, 1]
     """
+
+    # First build encoder and retrieve embedding dimension
     encoder, dim = build_vit_feature_extractor(
         model_name=model_name,
         pretrained=pretrained,
         img_size=img_size,
     )
+
+    # Attach binary classification head
     return ViTBinaryClassifier(encoder, dim)
