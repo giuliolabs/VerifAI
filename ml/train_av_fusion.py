@@ -1,5 +1,12 @@
 """
 Train Multimodal Fusion Model (Audio + Video) on FakeAVCeleb_v1.2
+=================================================================
+
+This script trains a multimodal fusion model for VerifAI using both
+visual and audio information from the FakeAVCeleb dataset. The aim is
+to combine frame-based visual evidence with MFCC-based audio evidence
+so the system can make a more informed deepfake prediction than either
+modality alone.
 
 What this script does
 ---------------------
@@ -29,31 +36,49 @@ Notes:
 - Uses num_workers=0 by default (more stable on Windows/OneDrive).
   You can increase to 2 if stable.
 
-Author: Giulio Dajani
+Author: Giulio Dajani 001343717
 Project: VerifAI – Deepfake Detection Framework
+Copyright © 2026 Giulio Labs
 """
 
+# Add project root to Python path so internal modules can be imported
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+# Standard library for CSV logging
 import csv
+
+# NumPy is used for metric calculations and array conversions
 import numpy as np
+
+# PyTorch core modules
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+
+# tqdm provides progress bars during training and validation
 from tqdm import tqdm
 
+# Evaluation metrics for validation reporting
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
+
+# Project dataset and multimodal model
 from ml.av_data_loader import FakeAVCelebAVDataset
 from ml.models.fusion.multimodal_fusion import MultimodalFusionModel
 
+# Logging utilities for training curves and run/error tracking
 from scripts.curve_writer import append_curve_row
 from scripts.run_logger import log_run, log_exception
 
 
 def _to_1d_logits(logits: torch.Tensor) -> torch.Tensor:
-    # supports [B], [B,1]
+    """
+    Ensure model output is converted to shape [B].
+
+    Some models may return [B] directly, while others return [B,1].
+    This helper makes the training and evaluation code consistent.
+    """
     if logits.ndim == 2 and logits.size(1) == 1:
         return logits.squeeze(1)
     return logits
@@ -61,12 +86,14 @@ def _to_1d_logits(logits: torch.Tensor) -> torch.Tensor:
 
 def evaluate(model, loader, device) -> tuple[float, float, float, float, float, float]:
     """
+    Evaluate the fusion model on the validation set.
+
     Returns:
-        val_loss, acc, f1, auc, (video_norm_mean, audio_norm_mean)
-    Assumes model optionally exposes last embedding norms:
-        model.last_video_norm_mean
-        model.last_audio_norm_mean
-    If not present, returns NaN for those.
+        val_loss, acc, f1, auc, video_norm_mean, audio_norm_mean
+
+    The final two values are optional diagnostic statistics.
+    If the model exposes modality embedding norms, they are logged to help
+    inspect whether one modality is dominating the fusion process.
     """
     model.eval()
     loss_fn = nn.BCEWithLogitsLoss()
@@ -85,6 +112,7 @@ def evaluate(model, loader, device) -> tuple[float, float, float, float, float, 
             mfcc = mfcc.to(device)
             y = y.float().to(device)
 
+            # Forward pass through the fusion model
             logits = model(video, mfcc)
             logits = _to_1d_logits(logits)
 
@@ -93,15 +121,18 @@ def evaluate(model, loader, device) -> tuple[float, float, float, float, float, 
             loss_sum += float(loss.item()) * bs
             count += bs
 
+            # Convert logits to probabilities for metric calculation
             probs = torch.sigmoid(logits).detach().cpu().numpy()
             y_prob.extend(probs.tolist())
             y_true.extend(y.detach().cpu().numpy().astype(int).tolist())
 
-            # Optional fusion logging (if model provides these)
+            # Optional fusion diagnostics:
+            # collect average embedding norms if the model exposes them
             if hasattr(model, "last_video_norm_mean"):
                 vn = getattr(model, "last_video_norm_mean")
                 if vn is not None:
                     video_norms.append(float(vn))
+
             if hasattr(model, "last_audio_norm_mean"):
                 an = getattr(model, "last_audio_norm_mean")
                 if an is not None:
@@ -113,14 +144,17 @@ def evaluate(model, loader, device) -> tuple[float, float, float, float, float, 
     y_prob = np.array(y_prob)
     y_pred = (y_prob >= 0.5).astype(int)
 
+    # Standard binary classification metrics
     acc = accuracy_score(y_true, y_pred)
     f1 = f1_score(y_true, y_pred, zero_division=0)
 
+    # AUC may fail if only one class appears in validation labels
     try:
         auc = roc_auc_score(y_true, y_prob)
     except ValueError:
         auc = float("nan")
 
+    # Mean embedding norm values help monitor modality balance
     video_norm_mean = float(np.mean(video_norms)) if video_norms else float("nan")
     audio_norm_mean = float(np.mean(audio_norms)) if audio_norms else float("nan")
 
@@ -128,12 +162,22 @@ def evaluate(model, loader, device) -> tuple[float, float, float, float, float, 
 
 
 def main():
+    """
+    Main training pipeline for the multimodal fusion model.
+
+    This function:
+    - loads train/validation AV datasets
+    - trains the model using BCEWithLogitsLoss
+    - evaluates after every epoch
+    - logs metrics and modality statistics
+    - saves the best checkpoint based on validation loss
+    """
     run_name = "av_fusion_v1"
     curve_csv = f"experiments/logs/training_curves/{run_name}.csv"
 
     try:
         # -------------------------
-        # Config
+        # Configuration
         # -------------------------
         out_dir = Path("experiments/results/fakeavceleb_av_fusion_v1")
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -150,37 +194,59 @@ def main():
         num_workers = 0
         mfcc_max_len = 200
 
+        # Select GPU if available, otherwise use CPU
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print("Device:", device)
 
         # -------------------------
         # Data
         # -------------------------
+
+        # Build train and validation multimodal datasets.
+        # strict=True ensures missing/corrupted samples are not silently ignored.
         train_ds = FakeAVCelebAVDataset("train", strict=True, mfcc_max_len=mfcc_max_len)
         val_ds   = FakeAVCelebAVDataset("val",   strict=True, mfcc_max_len=mfcc_max_len)
 
         print("Train items:", len(train_ds))
         print("Val items:", len(val_ds))
 
+        # Fail early if dataset preparation is incomplete
         if len(train_ds) == 0 or len(val_ds) == 0:
             raise FileNotFoundError(
                 "No AV samples found. Check FakeAVCeleb paths, splits, and preprocessing outputs."
             )
 
-        train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers)
-        val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        train_loader = DataLoader(
+            train_ds,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=num_workers
+        )
+        val_loader = DataLoader(
+            val_ds,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers
+        )
 
         # -------------------------
         # Model
         # -------------------------
+
+        # Build multimodal fusion model and move it to the selected device
         model = MultimodalFusionModel().to(device)
 
+        # Standard binary classification loss for single-logit output
         loss_fn = nn.BCEWithLogitsLoss()
+
+        # AdamW is used for stable optimization and mild regularization
         optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
 
         # -------------------------
         # Logging setup
         # -------------------------
+
+        # Create CSV log file with header if it does not exist yet
         if not log_path.exists():
             with open(log_path, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
@@ -204,7 +270,7 @@ def main():
         epochs_no_improve = 0
 
         # -------------------------
-        # Train loop
+        # Training loop
         # -------------------------
         for epoch in range(1, MAX_EPOCHS + 1):
             model.train()
@@ -216,6 +282,7 @@ def main():
                 mfcc = mfcc.to(device)
                 y = y.float().to(device)
 
+                # Forward pass through multimodal model
                 logits = model(video, mfcc)
                 logits = _to_1d_logits(logits)
 
@@ -234,6 +301,8 @@ def main():
             # -------------------------
             # Validation
             # -------------------------
+
+            # Evaluate after each epoch using several useful metrics, not just validation loss
             val_loss, val_acc, val_f1, val_auc, vnorm, anorm = evaluate(model, val_loader, device)
 
             print(
@@ -243,11 +312,12 @@ def main():
                 f"acc={val_acc:.4f}  f1={val_f1:.4f}  auc={val_auc:.4f}"
             )
 
-            # write fusion log
+            # Write detailed fusion-specific log
             with open(log_path, "a", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
                 writer.writerow([epoch, train_loss, val_loss, val_acc, val_f1, val_auc, vnorm, anorm])
 
+            # Also append to the central VerifAI training-curves log
             append_curve_row(curve_csv, {
                 "epoch": epoch,
                 "train_loss": train_loss,
@@ -257,6 +327,7 @@ def main():
                 "val_acc": val_acc,
             })
 
+            # Determine whether validation loss improved enough to count
             improved = (best_val_loss - val_loss) > MIN_DELTA
 
             if improved:
@@ -267,6 +338,7 @@ def main():
                 best_val_auc = val_auc
                 epochs_no_improve = 0
 
+                # Save the best checkpoint with both model weights and useful metadata
                 torch.save({
                     "model_state": model.state_dict(),
                     "epoch": best_epoch,
@@ -291,6 +363,7 @@ def main():
             else:
                 epochs_no_improve += 1
 
+                # Stop early if validation loss has not improved for several epochs
                 if epochs_no_improve >= PATIENCE:
                     print(
                         f"Early stopping triggered. "
@@ -298,6 +371,7 @@ def main():
                     )
                     break
 
+        # Write final run summary to VerifAI central logging system
         log_run(run_name, payload={
             "task": "train",
             "model": "multimodal_fusion",
@@ -318,6 +392,7 @@ def main():
         print("Fusion log ->", log_path)
 
     except Exception as exc:
+        # Log unexpected failures before re-raising the exception
         log_exception(run_name, exc, context={"script": "ml/train_av_fusion.py"})
         raise
 
