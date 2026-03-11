@@ -1,10 +1,29 @@
 """
-Reusable metrics utilities for the Deepfake Detection Framework.
+Reusable Metrics Utilities for the Deepfake Detection Framework
+================================================================
+
+This module centralises binary classification evaluation logic for VerifAI.
+It ensures consistent metric computation across:
+
+- Visual models
+- Audio models
+- Multimodal fusion models
 
 Why this file matters:
 - Keeps evaluation consistent across all models (video/audio/fusion).
-- Produces report-ready outputs (txt + JSON + optional plots).
-- Helps you demonstrate a "framework" rather than one-off scripts.
+- Produces report-ready outputs (TXT + JSON).
+- Encourages a clean "framework" architecture instead of one-off scripts.
+- Supports dissertation-quality reproducibility and ablation reporting.
+
+Provided utilities:
+- Binary metric computation (accuracy, ROC-AUC, AP, confusion matrix, report)
+- Optional ROC and PR curve extraction
+- Frame-to-video probability aggregation
+- Structured metric saving (TXT + JSON)
+
+Author: Giulio Dajani 001343717
+Project: VerifAI – Deepfake Detection Framework
+Copyright © 2026 Giulio Labs
 """
 
 from __future__ import annotations
@@ -29,15 +48,24 @@ from sklearn.metrics import (
 
 @dataclass
 class BinaryMetrics:
+    """
+    Container for binary classification evaluation results.
+
+    Includes:
+    - Core scalar metrics
+    - Confusion matrix
+    - Text classification report
+    - Optional ROC and PR curve data for plotting/appendix usage
+    """
     num_samples: int
     accuracy: float
     auc_roc: float
-    ap: float  # average precision (PR-AUC-ish)
+    ap: float  # Average precision (PR-AUC style)
     threshold: float
     confusion_matrix: List[List[int]]
     report: str
 
-    # Optional curve data (useful for plots, ablations, and appendix)
+    # Optional curve data useful for plots, ablations, and appendix
     fpr: Optional[List[float]] = None
     tpr: Optional[List[float]] = None
     roc_thresholds: Optional[List[float]] = None
@@ -47,11 +75,20 @@ class BinaryMetrics:
 
 
 def _to_float_list(arr: np.ndarray) -> List[float]:
+    """
+    Convert numpy array to list of Python floats
+    which is important for JSON serialization.
+    """
     return [float(x) for x in arr.reshape(-1)]
 
 
 def _safe_auc_roc(y_true: List[int], y_score: List[float]) -> float:
-    # roc_auc_score breaks if y_true has only one class
+    """
+    Compute ROC-AUC safely.
+
+    roc_auc_score fails if only one class is present in y_true.
+    In that case, return NaN instead of crashing.
+    """
     if len(set(y_true)) < 2:
         return float("nan")
     return float(roc_auc_score(y_true, y_score))
@@ -65,21 +102,29 @@ def compute_binary_metrics(
 ) -> BinaryMetrics:
     """
     Compute standard binary classification metrics from:
-      - y_true: list of 0/1 labels
-      - y_score: list of probabilities/scores in [0,1]
 
-    threshold: decision threshold for y_pred
-    include_curves: include ROC/PR curves for plotting/report appendix
+        y_true  : list of 0/1 ground-truth labels
+        y_score : list of predicted probabilities in [0,1]
+
+    threshold:
+        Decision threshold for converting probabilities to predictions.
+
+    include_curves:
+        If True, include ROC and PR curve arrays for appendix.
+
+    Returns:
+        BinaryMetrics dataclass instance.
     """
     if len(y_true) != len(y_score):
         raise ValueError("y_true and y_score must be the same length.")
 
+    # Convert probabilities to hard predictions
     y_pred = [1 if float(p) >= threshold else 0 for p in y_score]
 
     acc = float(accuracy_score(y_true, y_pred))
     auc = _safe_auc_roc(y_true, y_score)
 
-    # Average precision (works even when ROC-AUC is nan sometimes, but can still be nan if degenerate)
+    # Average precision (robust alternative to ROC-AUC in some cases)
     try:
         ap = float(average_precision_score(y_true, y_score)) if len(set(y_true)) > 1 else float("nan")
     except Exception:
@@ -98,6 +143,7 @@ def compute_binary_metrics(
         report=rep,
     )
 
+    # Optional ROC & PR curves
     if include_curves and len(set(y_true)) > 1:
         fpr, tpr, roc_th = roc_curve(y_true, y_score)
         prec, rec, pr_th = precision_recall_curve(y_true, y_score)
@@ -118,12 +164,17 @@ def aggregate_video_scores_mean(
 ) -> Tuple[List[int], List[float], List[str]]:
     """
     Convert frame-level probabilities to video-level scores
-    by averaging probs per video.
+    by averaging probabilities per video.
+
+    Parameters:
+        frame_probs  : dict[video_id -> list of frame probabilities]
+        video_label  : dict[video_id -> ground truth label]
 
     Returns:
-      y_true, y_score, video_ids (sorted)
+        y_true, y_score, video_ids (sorted)
     """
     video_ids = sorted(frame_probs.keys())
+
     y_true: List[int] = []
     y_score: List[float] = []
 
@@ -141,17 +192,20 @@ def save_metrics_report(
     extra: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Path, Path]:
     """
-    Saves:
-      - <name>_report.txt (human-friendly)
-      - <name>_metrics.json (machine-friendly)
+    Save evaluation results in two formats:
 
-    Returns: (txt_path, json_path)
+      1. <name>_report.txt   (human-readable, dissertation-ready)
+      2. <name>_metrics.json (machine-readable for plots/ablation tables)
+
+    Returns:
+        (txt_path, JSON_path)
     """
     out_dir.mkdir(parents=True, exist_ok=True)
+
     txt_path = out_dir / f"{name}_report.txt"
     json_path = out_dir / f"{name}_metrics.json"
 
-    # ---- TXT (report-ready) ----
+    # ---- TXT ----
     with open(txt_path, "w", encoding="utf-8") as f:
         f.write(f"{name.upper()} RESULTS\n")
         f.write(f"Num samples: {metrics.num_samples}\n")
@@ -167,7 +221,7 @@ def save_metrics_report(
             for key, value in extra.items():
                 f.write(f"{key}: {value}\n")
 
-    # ---- JSON (for plotting/ablation tables) ----
+    # ---- JSON ----
     payload = asdict(metrics)
     if extra:
         payload["extra"] = extra
