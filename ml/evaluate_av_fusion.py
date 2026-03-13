@@ -1,6 +1,13 @@
 """
-Evaluate Multimodal Fusion Model (Audio + Video) on FakeAVCeleb_v1.2 (TEST split)
-==================================================================================
+Evaluate Multimodal Fusion Model (Audio + Video) on FakeAVCeleb_v1.2 (Test Split)
+=================================================================================
+
+This script evaluates the trained multimodal fusion model on the FakeAVCeleb
+test split. It combines both visual and audio inputs for each sample and
+produces two types of evaluation output:
+
+- overall binary classification metrics for the whole test set
+- per-category breakdown using FakeAVCeleb AV categories
 
 Outputs (in experiments/results/fakeavceleb_av_fusion_v1):
 - test_report.txt
@@ -17,8 +24,9 @@ Run (from project root):
 Dependencies:
     pip install torch torchvision numpy pandas scikit-learn tqdm
 
-Author: Giulio Dajani
+Author: Giulio Dajani 001343717
 Project: VerifAI – Deepfake Detection Framework
+Copyright © 2026 Giulio Labs
 """
 
 from __future__ import annotations
@@ -26,11 +34,17 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+# Add project root to Python path so internal modules can be imported correctly
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+# NumPy and pandas are used for metric preparation and tabular outputs
 import numpy as np
 import pandas as pd
+
+# PyTorch is used for model loading and inference
 import torch
+
+# sklearn metrics are used for additional evaluation beyond the shared metrics utility
 from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
@@ -42,21 +56,35 @@ from sklearn.metrics import (
     roc_auc_score,
     average_precision_score,
 )
+
+# DataLoader batches the multimodal dataset
 from torch.utils.data import DataLoader
+
+# tqdm provides progress bars during evaluation
 from tqdm import tqdm
 
+# Project dataset, model, and shared evaluation utilities
 from ml.av_data_loader import FakeAVCelebAVDataset
 from ml.models.fusion.multimodal_fusion import MultimodalFusionModel
 from ml.metrics import compute_binary_metrics, save_metrics_report
 
 
 def _to_1d_logits(logits: torch.Tensor) -> torch.Tensor:
+    """
+    Ensure model output has shape [B].
+
+    Some models may return logits as [B,1], while others may already
+    return [B]. This helper makes later code consistent.
+    """
     if logits.ndim == 2 and logits.size(1) == 1:
         return logits.squeeze(1)
     return logits
 
 
 def _torch_load_compat(path: Path, device: str):
+    """
+    Load a PyTorch checkpoint in a version-compatible way.
+    """
     try:
         return torch.load(path, map_location=device, weights_only=False)
     except TypeError:
@@ -64,6 +92,12 @@ def _torch_load_compat(path: Path, device: str):
 
 
 def _safe_auc(y_true, y_score):
+    """
+    Compute ROC-AUC safely.
+
+    If only one class is present, ROC-AUC is not defined,
+    so return NaN instead of raising an error.
+    """
     try:
         if len(set(y_true)) < 2:
             return float("nan")
@@ -73,6 +107,12 @@ def _safe_auc(y_true, y_score):
 
 
 def _safe_ap(y_true, y_score):
+    """
+    Compute Average Precision safely.
+
+    If only one class is present, AP may not be meaningful,
+    so return NaN instead of raising an error.
+    """
     try:
         if len(set(y_true)) < 2:
             return float("nan")
@@ -82,6 +122,12 @@ def _safe_ap(y_true, y_score):
 
 
 def _compute_category_metrics(df: pd.DataFrame, threshold: float = 0.5) -> pd.DataFrame:
+    """
+    Compute per-category evaluation metrics.
+
+    The test set is grouped by FakeAVCeleb AV category so performance
+    can be analyzed separately for different manipulation conditions.
+    """
     rows = []
 
     for category in sorted(df["av_category"].dropna().unique().tolist()):
@@ -100,6 +146,8 @@ def _compute_category_metrics(df: pd.DataFrame, threshold: float = 0.5) -> pd.Da
         auc = _safe_auc(y_true, y_score)
         ap = _safe_ap(y_true, y_score)
 
+        # Confusion matrix is fixed to label order [0,1]
+        # so TN, FP, FN, TP are always extracted consistently.
         cm = confusion_matrix(y_true, y_pred, labels=[0, 1])
         tn, fp, fn, tp = cm.ravel()
 
@@ -128,6 +176,16 @@ def _compute_category_metrics(df: pd.DataFrame, threshold: float = 0.5) -> pd.Da
 
 @torch.no_grad()
 def main():
+    """
+    Main evaluation pipeline for the AV fusion model.
+
+    This function:
+    - loads the trained checkpoint
+    - evaluates on the FakeAVCeleb test split
+    - computes overall binary classification metrics
+    - computes per-category metrics
+    - saves TXT, JSON, and CSV outputs
+    """
     ckpt_path = Path("experiments/results/fakeavceleb_av_fusion_v1/best_model.pt")
     if not ckpt_path.exists():
         raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
@@ -135,17 +193,19 @@ def main():
     out_dir = ckpt_path.parent
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    # Select GPU if available, otherwise use CPU
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Device:", device)
 
+    # Load checkpoint and recover mfcc_max_len so evaluation matches training
     ckpt = _torch_load_compat(ckpt_path, device)
     mfcc_max_len = int(ckpt.get("mfcc_max_len", 200))
 
-    # ---- data ----
+    # ---- Data ----
     test_ds = FakeAVCelebAVDataset("test", strict=True, mfcc_max_len=mfcc_max_len)
     test_loader = DataLoader(test_ds, batch_size=8, shuffle=False, num_workers=0)
 
-    # Need metadata for categories
+    # Read split CSV so each video_id can be mapped to its AV category
     split_csv = Path("data/splits/fakeavceleb_test.csv")
     if not split_csv.exists():
         raise FileNotFoundError(f"Split CSV not found: {split_csv}")
@@ -156,11 +216,13 @@ def main():
 
     video_to_category = dict(zip(split_df["video_id"].astype(str), split_df["av_category"].astype(str)))
 
-    # ---- model ----
+    # ---- Model ----
     model = MultimodalFusionModel().to(device)
     model.load_state_dict(ckpt["model_state"])
     model.eval()
 
+    # Store per-sample outputs so both overall and per-category
+    # metrics can be computed afterward in a flexible way.
     records = []
 
     for video, mfcc, y, video_ids in tqdm(test_loader, desc="Evaluating"):
@@ -170,6 +232,7 @@ def main():
         logits = _to_1d_logits(model(video, mfcc))
         probs = torch.sigmoid(logits).cpu().numpy()
 
+        # y may already be a tensor batch; convert it safely to integer labels
         if isinstance(y, torch.Tensor):
             y_true_batch = y.cpu().numpy().astype(int).tolist()
         else:
@@ -188,7 +251,9 @@ def main():
     y_true = eval_df["y_true"].astype(int).tolist()
     y_score = eval_df["y_score"].astype(float).tolist()
 
-    # ---- overall metrics ----
+    # ---- Overall metrics ----
+    # Use the shared metrics utility so evaluation remains consistent
+    # with the rest of the VerifAI framework.
     metrics = compute_binary_metrics(
         y_true=y_true,
         y_score=y_score,
@@ -196,6 +261,8 @@ def main():
         include_curves=True,
     )
 
+    # Compute a few extra scalar metrics not stored directly inside
+    # the BinaryMetrics object used by the shared utility.
     y_pred = (eval_df["y_score"].to_numpy() >= 0.5).astype(int)
     overall_bal_acc = balanced_accuracy_score(eval_df["y_true"], y_pred)
     overall_mcc = matthews_corrcoef(eval_df["y_true"], y_pred)
@@ -212,6 +279,7 @@ def main():
     print("Confusion matrix:\n", np.array(metrics.confusion_matrix))
     print("\nReport:\n", metrics.report)
 
+    # Save framework-consistent TXT and JSON reports
     txt_path, json_path = save_metrics_report(
         out_dir=out_dir,
         name="test",
@@ -226,7 +294,7 @@ def main():
         },
     )
 
-    # ---- per-category metrics ----
+    # ---- Per-category metrics ----
     per_cat_df = _compute_category_metrics(eval_df, threshold=0.5)
     per_cat_path = out_dir / "test_per_category.csv"
     per_cat_df.to_csv(per_cat_path, index=False)
