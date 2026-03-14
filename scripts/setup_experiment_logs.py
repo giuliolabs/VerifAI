@@ -1,14 +1,53 @@
+"""
+VerifAI Logging Scaffold Initializer
+====================================
+
+This script sets up the central logging structure used across the whole
+VerifAI project. Its purpose is to create a consistent place for storing
+debug notes, reproducibility records, run metadata, error reports, and
+training curves.
+
+The script is useful because it keeps experiment evidence organised in
+one place, which supports:
+- reproducibility
+- debugging
+- clearer project structure
+- stronger evidence for examiners
+
+What this script creates:
+- experiments/logs/debug_log.md
+- experiments/logs/verifai_random_seeds.tsv
+- experiments/logs/runs/
+- experiments/logs/errors/
+- experiments/logs/training_curves/
+- experiments/logs/README.md
+
+Author: Giulio Dajani 001343717
+Project: VerifAI – Deepfake Detection Framework
+Copyright © 2026 Giulio Labs
+"""
+
 from __future__ import annotations
 
+# Path is used for platform-independent file and folder handling
 from pathlib import Path
+
+# datetime is used to print a timestamp when setup finishes
 from datetime import datetime
 
-# Repo root = parent of /scripts
+
+# Repo root is the parent folder above /scripts.
+# This makes the script work relative to the project structure.
 ROOT = Path(__file__).resolve().parents[1]
 
-# Central logs directory for the whole project (NOT just ablations)
+# Central logs directory for the whole project
+# (not limited to one experiment type)
 LOGS_DIR = ROOT / "experiments" / "logs"
 
+
+# Template text for the main debugging diary.
+# This gives the project a ready-made structured log format
+# instead of leaving debugging notes unorganized.
 DEBUG_TEMPLATE = """# VerifAI Debug / Error Tracking Log
 
 This log documents bugs, investigation steps, and fixes across VerifAI:
@@ -75,15 +114,35 @@ disable) to keep inference within RAM limits.
 ---
 """
 
+
 def main() -> None:
+    """
+    Create the central VerifAI logging folder structure and starter files.
+
+    This function:
+    - creates the main logs directory
+    - creates a debug diary if it does not already exist
+    - creates a random-seeds registry file
+    - creates subfolders for run logs, error logs, and training curves
+    - creates a README explaining the purpose of the logs folder
+    """
+
+    # Ensure the main logs directory exists
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
+    # -------------------------------------------------------
     # Debug diary
+    # -------------------------------------------------------
+    # This file stores structured debugging notes and investigation history.
     debug_log = LOGS_DIR / "debug_log.md"
     if not debug_log.exists():
         debug_log.write_text(DEBUG_TEMPLATE, encoding="utf-8")
 
+    # -------------------------------------------------------
     # Seed registry
+    # -------------------------------------------------------
+    # This TSV file can be used to record random seeds used in experiments,
+    # which helps make training runs more reproducible.
     seeds_file = LOGS_DIR / "verifai_random_seeds.tsv"
     if not seeds_file.exists():
         seeds_file.write_text(
@@ -91,14 +150,26 @@ def main() -> None:
             encoding="utf-8",
         )
 
-    # Run logs + errors
+    # -------------------------------------------------------
+    # Run logs and error logs
+    # -------------------------------------------------------
+    # These folders keep JSON outputs separate by purpose:
+    # - runs/ for normal experiment metadata
+    # - errors/ for exceptions and failure reports
     (LOGS_DIR / "runs").mkdir(parents=True, exist_ok=True)
     (LOGS_DIR / "errors").mkdir(parents=True, exist_ok=True)
 
+    # -------------------------------------------------------
     # Training curves
+    # -------------------------------------------------------
+    # This folder stores per-run CSV logs and possibly curve plots later on.
     (LOGS_DIR / "training_curves").mkdir(parents=True, exist_ok=True)
 
-    # Readme
+    # -------------------------------------------------------
+    # Logs README
+    # -------------------------------------------------------
+    # This file explains the purpose of the logging directory
+    # so the structure stays understandable for examiners and collaborators.
     readme = LOGS_DIR / "README.md"
     if not readme.exists():
         readme.write_text(
@@ -112,8 +183,11 @@ def main() -> None:
             encoding="utf-8",
         )
 
+    # Add a timestamp to the final confirmation message
+    # so it is clear when the scaffold was created or checked.
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"[OK] VerifAI logs scaffold ready at: {LOGS_DIR} ({stamp})")
+
 
 if __name__ == "__main__":
     main()

@@ -1,19 +1,28 @@
 """
-Build FakeAVCeleb_v1.2 manifest + subject-level train/val/test splits
+Build FakeAVCeleb_v1.2 Manifest + Subject-Level Train/Val/Test Splits
 =====================================================================
 
-Dataset layout (as in your folder tree):
-  data/raw/FakeAVCeleb_v1.2/
-    FakeVideo-FakeAudio/<Ethnicity>/<gender>/<subject_id>/*.mp4
-    FakeVideo-RealAudio/<Ethnicity>/<gender>/<subject_id>/*.mp4
-    RealVideo-FakeAudio/<Ethnicity>/<gender>/<subject_id>/*.mp4
-    RealVideo-RealAudio/<Ethnicity>/<gender>/<subject_id>/*.mp4
-    meta_data.csv
+This script scans the FakeAVCeleb_v1.2 dataset, builds a clean manifest
+containing all discovered video clips, and then creates train, validation,
+and test splits at subject level.
+
+Using subject-level splitting is important because it prevents identity
+leakage. In other words, the same subject_id cannot appear in more than
+one split, which gives a more realistic evaluation of how well the model
+generalizes to unseen people.
+
+Dataset layout expected:
+    data/raw/FakeAVCeleb_v1.2/
+        FakeVideo-FakeAudio/<Ethnicity>/<gender>/<subject_id>/*.mp4
+        FakeVideo-RealAudio/<Ethnicity>/<gender>/<subject_id>/*.mp4
+        RealVideo-FakeAudio/<Ethnicity>/<gender>/<subject_id>/*.mp4
+        RealVideo-RealAudio/<Ethnicity>/<gender>/<subject_id>/*.mp4
+        meta_data.csv
 
 ------------------------------------------------
 LABEL DEFINITION
 ------------------------------------------------
-This version builds labels for overall clip authenticity:
+This script builds labels for overall clip authenticity:
 
     RealVideo-RealAudio  -> 0 (real)
     FakeVideo-RealAudio  -> 1 (fake)
@@ -48,19 +57,29 @@ OUTPUTS
     data/splits/fakeavceleb_val.csv
     data/splits/fakeavceleb_test.csv
 
-Author: Giulio Dajani
+Author: Giulio Dajani 001343717
 Project: VerifAI – Deepfake Detection Framework
+Copyright © 2026 Giulio Labs
 """
 
+# Path is used for platform-independent file/folder handling
 from pathlib import Path
+
+# random is used to shuffle subject IDs reproducibly before splitting
 import random
 
+# pandas stores the manifest and split tables
 import pandas as pd
+
+# tqdm adds a progress bar while scanning dataset files
 from tqdm import tqdm
 
 
+# Supported video file extensions
 VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
 
+
+# Valid top-level audio/video manipulation categories in FakeAVCeleb
 AV_CATEGORIES = {
     "FakeVideo-FakeAudio",
     "FakeVideo-RealAudio",
@@ -70,10 +89,17 @@ AV_CATEGORIES = {
 
 
 def list_videos(raw_root: Path):
+    """
+    Recursively collect all video files from the expected FakeAVCeleb categories.
+
+    Returns:
+        List of pathlib.Path objects for all valid video files found.
+    """
     videos = []
 
     for category in AV_CATEGORIES:
         category_dir = raw_root / category
+
         if not category_dir.exists():
             continue
 
@@ -85,13 +111,30 @@ def list_videos(raw_root: Path):
 
 
 def make_video_id(dataset: str, path: Path, raw_root: Path):
+    """
+    Build a stable video_id from the relative path.
+
+    Slashes are replaced so the ID is safe to store in CSVs and use
+    later in preprocessing pipelines.
+    """
     rel = path.relative_to(raw_root).as_posix()
     safe = rel.replace("/", "__").replace(":", "")
     return f"{dataset}__{safe}"
 
 
 def split_subject_ids(subject_ids, seed=42):
+    """
+    Split unique subject IDs into train / val / test sets.
+
+    Default ratio:
+        80% train
+        10% val
+        10% test
+
+    The split is reproducible because a fixed random seed is used.
+    """
     rng = random.Random(seed)
+
     subject_ids = list(subject_ids)
     rng.shuffle(subject_ids)
 
@@ -108,8 +151,13 @@ def split_subject_ids(subject_ids, seed=42):
 
 def parse_fakeavceleb_fields(video_path: Path, raw_root: Path):
     """
-    Expected relative path:
-      <AV_CATEGORY>/<Ethnicity>/<gender>/<subject_id>/<filename>.mp4
+    Extract structured fields from a FakeAVCeleb video path.
+
+    Expected relative path structure:
+        <AV_CATEGORY>/<Ethnicity>/<gender>/<subject_id>/<filename>.mp4
+
+    Returns:
+        av_category, ethnicity, gender, subject_id, label
     """
     rel_parts = video_path.relative_to(raw_root).parts
 
@@ -119,13 +167,23 @@ def parse_fakeavceleb_fields(video_path: Path, raw_root: Path):
     subject_id = rel_parts[3] if len(rel_parts) > 3 else ""
 
     # Clip-level authenticity rule:
-    # Only RealVideo-RealAudio is real.
+    # only RealVideo-RealAudio is considered fully real
     label = 0 if av_category == "RealVideo-RealAudio" else 1
 
     return av_category, ethnicity, gender, subject_id, label
 
 
 def main():
+    """
+    Main execution logic.
+
+    This function:
+    - scans the dataset
+    - builds a manifest CSV
+    - performs subject-level splitting
+    - saves train/val/test CSV files
+    - prints summary statistics and overlap checks
+    """
     dataset = "FakeAVCeleb_v1.2"
     raw_root = Path("data/raw/FakeAVCeleb_v1.2")
 
@@ -135,6 +193,7 @@ def main():
     videos = list_videos(raw_root)
     rows = []
 
+    # Scan all discovered videos and build structured metadata rows
     for video_path in tqdm(videos, desc="Scanning FakeAVCeleb_v1.2"):
         av_category, ethnicity, gender, subject_id, label = parse_fakeavceleb_fields(video_path, raw_root)
 
@@ -154,6 +213,7 @@ def main():
     if len(df) == 0:
         raise RuntimeError("No videos found. Check the FakeAVCeleb dataset path.")
 
+    # Save the full manifest before splitting
     out_manifest = Path("data/metadata/fakeavceleb_manifest.csv")
     out_manifest.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out_manifest, index=False)
@@ -164,13 +224,16 @@ def main():
     print("Label distribution:\n", df["label"].value_counts(dropna=False))
     print("\nAV category distribution:\n", df["av_category"].value_counts(dropna=False))
 
+    # Build subject-level splits
     unique_subjects = sorted(df["subject_id"].dropna().astype(str).unique().tolist())
     train_subjects, val_subjects, test_subjects = split_subject_ids(unique_subjects, seed=42)
 
+    # Filter the manifest into split-specific tables
     train_df = df[df["subject_id"].astype(str).isin(train_subjects)].copy()
     val_df = df[df["subject_id"].astype(str).isin(val_subjects)].copy()
     test_df = df[df["subject_id"].astype(str).isin(test_subjects)].copy()
 
+    # Save split CSV files
     splits_dir = Path("data/splits")
     splits_dir.mkdir(parents=True, exist_ok=True)
 
@@ -183,9 +246,12 @@ def main():
     test_df.to_csv(test_path, index=False)
 
     def print_split_stats(name: str, split_df: pd.DataFrame):
+        """
+        Print a short summary for one split.
+        """
         print(f"\n{name} split")
         print("Rows:", len(split_df))
-        print("Unique subjects:", split_df['subject_id'].nunique())
+        print("Unique subjects:", split_df["subject_id"].nunique())
         print("Label distribution:")
         print(split_df["label"].value_counts(dropna=False))
         print("\nAV category distribution:")
@@ -200,6 +266,8 @@ def main():
     print_split_stats("Val", val_df)
     print_split_stats("Test", test_df)
 
+    # Final verification:
+    # make sure subject-level splitting really produced disjoint sets
     overlap_train_val = train_subjects.intersection(val_subjects)
     overlap_train_test = train_subjects.intersection(test_subjects)
     overlap_val_test = val_subjects.intersection(test_subjects)
