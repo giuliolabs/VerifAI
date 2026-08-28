@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # VerifAI - AI-Powered Deepfake Detection Platform
 
 ## Live Demo
