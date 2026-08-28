@@ -1,0 +1,9 @@
+Datasets download links:
+
+Celeb-DF-v2 => https://www.kaggle.com/datasets/reubensuju/celeb-df-v2
+
+DeeperForensics => https://drive.google.com/drive/folders/1s3KwYyTIXT78VzkRazn9QDPuNh18TWe-
+
+FaceForensics++_C23 => https://www.kaggle.com/datasets/xdxd003/ff-c23?
+
+FakeAVCeleb_v1.2 => https://drive.google.com/file/d/1sMy9AG6ed5eW-gVkk0blrQDw2dchF1iG/view?usp=sharing_eip&ts=695bc235
