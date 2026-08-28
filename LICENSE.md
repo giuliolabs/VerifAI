@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 Copyright © 2026 Giulio Labs
 
 All rights reserved.
