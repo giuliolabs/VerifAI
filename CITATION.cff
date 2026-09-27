@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use VerifAI, please cite it using the metadata below."
+title: "VerifAI: Multimodal Audio-Visual Deepfake Detection Framework"
+type: software
+authors:
+  - family-names: Dajani
+    given-names: Giulio
+    affiliation: University of Greenwich
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+repository-code: "https://github.com/giuliolabs/VerifAI"
+url: "https://vrifai.com"
+keywords:
+  - deepfake detection
+  - multimodal learning
+  - audio-visual fusion
+  - media forensics
+  - out-of-distribution generalisation
+version: "1.0.0"
+date-released: "2026-09-27"

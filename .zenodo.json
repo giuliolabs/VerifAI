@@ -1,0 +1,12 @@
+{
+  "title": "VerifAI: Multimodal Audio-Visual Deepfake Detection Framework (source code)",
+  "upload_type": "software",
+  "description": "<p>Source code for VerifAI, a multimodal (audio + visual) deepfake video detection framework: data pipelines, training and evaluation scripts, FastAPI inference service and the in-browser demo (https://vrifai.com). Trained model weights are archived in a separate Zenodo record.</p>",
+  "creators": [
+    { "name": "Dajani, Giulio", "affiliation": "University of Greenwich" }
+  ],
+  "keywords": ["deepfake detection", "multimodal learning", "audio-visual fusion", "media forensics", "out-of-distribution generalisation"],
+  "related_identifiers": [
+    { "identifier": "https://vrifai.com", "relation": "isDocumentedBy", "resource_type": "other" }
+  ]
+}
