@@ -7,6 +7,19 @@ authors:
     given-names: Giulio
     affiliation: University of Greenwich
     # orcid: "https://orcid.org/0000-0000-0000-0000"
+references:
+  - type: dataset
+    title: "VerifAI: trained model weights for multimodal deepfake detection"
+    authors:
+      - family-names: Dajani
+        given-names: Giulio
+      - family-names: Abdul Kareem
+        given-names: Razia Sulthana
+    publisher:
+      name: Zenodo
+    version: "1.0"
+    year: 2026
+    doi: "10.5281/zenodo.22997514"
 repository-code: "https://github.com/giuliolabs/VerifAI"
 url: "https://vrifai.com"
 keywords:

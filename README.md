@@ -4,6 +4,8 @@
 
 **Website:** https://vrifai.com — runs entirely in your browser (ONNX Runtime Web); videos are never uploaded.
 
+**Trained model weights:** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22997514.svg)](https://doi.org/10.5281/zenodo.22997514) — checkpoints, fusion model, test reports and SHA-256 checksums (CC BY-NC 4.0).
+
 > Hosted for free on GitHub Pages (`website/`). The in-browser models are ONNX exports of the final checkpoints (`scripts/export_onnx.py`). See [DEPLOY.md](DEPLOY.md).
 
 ---
@@ -300,3 +302,13 @@ Planned future improvements:
 **Giulio Dajani**  
 AI Engineer | Software Engineer  
 University of Greenwich
+
+---
+
+# Data and Code Availability
+
+- **Code:** https://github.com/giuliolabs/VerifAI (this repository).
+- **Trained model weights:** Zenodo, [doi:10.5281/zenodo.22997514](https://doi.org/10.5281/zenodo.22997514) — final visual (Xception) and audio (MFCC ResNet-18) models, late-fusion model, baseline checkpoints used in the cross-dataset evaluation, ONNX web exports, test reports and checksums. Licence: CC BY-NC 4.0.
+- **Datasets:** FaceForensics++, Celeb-DF v2, DeeperForensics-1.0 and FakeAVCeleb v1.2 are available from their original authors under their own terms (see `data/raw/datasets.txt`). The Survey369 evaluation set is not publicly available.
+- **Rebuilding the weights package:** `python scripts/make_zenodo_package.py`.
+
