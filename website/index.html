@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VerifAI — Multimodal Deepfake Detection</title>
+  <meta name="description" content="VerifAI checks whether a video is authentic or AI-manipulated by analysing both what you see and what you hear. Free research demo by Giulio Dajani.">
+  <meta name="theme-color" content="#070B14">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="canonical" href="https://vrifai.com/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://vrifai.com/">
+  <meta property="og:title" content="VerifAI — Is that video real?">
+  <meta property="og:description" content="Multimodal (audio + visual) deepfake detection. Upload a short clip and get a verdict in seconds.">
+  <meta property="og:image" content="https://vrifai.com/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"VerifAI","applicationCategory":"SecurityApplication","operatingSystem":"Web","url":"https://vrifai.com","author":{"@type":"Person","name":"Giulio Dajani"},"codeRepository":"https://github.com/giuliolabs/VerifAI","description":"Multimodal audio-visual deepfake detection framework."}
+  </script>
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <header class="nav">
+    <a class="brand" href="#top" aria-label="VerifAI home">
+      <img src="assets/mark.svg" alt="" width="28" height="28">
+      <span>Verif<b>AI</b></span>
+    </a>
+    <nav class="links" aria-label="Sections">
+      <a href="#try">Try it</a>
+      <a href="#how">How it works</a>
+      <a href="#results">Results</a>
+      <a href="#paper">Paper</a>
+    </nav>
+    <a class="btn btn-ghost gh" id="ghNav" href="https://github.com/giuliolabs/VerifAI" target="_blank" rel="noopener">
+      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      <span>GitHub</span>
+    </a>
+  </header>
+
+  <main id="top">
+    <!-- ============ HERO + DETECTOR ============ -->
+    <section class="hero" id="try">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="dot"></span> Audio + visual deepfake detection</p>
+        <h1>Is that video <span class="grad">real?</span></h1>
+        <p class="lede">
+          VerifAI looks at the faces <em>and</em> listens to the voice. Drop in a short clip and two neural
+          networks — one for frames, one for audio — vote on whether it has been manipulated.
+        </p>
+        <ul class="facts">
+          <li><b>0.996</b><span>ROC-AUC on FakeAVCeleb</span></li>
+          <li><b>4</b><span>benchmark datasets</span></li>
+          <li><b>~10 s</b><span>per clip on CPU</span></li>
+        </ul>
+        <div class="hero-cta">
+          <a class="btn btn-primary" href="#how">See how it works</a>
+          <a class="btn btn-ghost" href="https://github.com/giuliolabs/VerifAI" target="_blank" rel="noopener">View source</a>
+        </div>
+      </div>
+
+      <div class="card detector" id="detector" aria-live="polite">
+        <div class="card-head">
+          <span class="mono">verifai / detect</span>
+          <span class="status" id="apiStatus" data-state="checking"><i></i><span>Checking server…</span></span>
+        </div>
+
+        <!-- Idle: dropzone -->
+        <label class="drop" id="drop" for="fileInput">
+          <input id="fileInput" type="file" accept=".mp4,.mov,.avi,video/mp4,video/quicktime,video/x-msvideo" hidden>
+          <div class="drop-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48" width="44" height="44"><rect x="6" y="11" width="28" height="26" rx="5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="m34 20 8-5v18l-8-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M20 30V18m-5 5 5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <p class="drop-title">Drop a video here, or <u>browse</u></p>
+          <p class="drop-sub">MP4, MOV or AVI · up to 25 MB · short clips with a visible face work best</p>
+        </label>
+
+        <!-- Selected / analysing / result -->
+        <div class="work" id="work" hidden>
+          <div class="preview">
+            <video id="preview" muted playsinline controls preload="metadata"></video>
+            <div class="file-meta"><span id="fileName" class="mono"></span><span id="fileSize" class="mono muted"></span></div>
+          </div>
+
+          <div class="frames-wrap">
+            <div class="frames-label mono">
+              <span>What the model sees · 5 frames @ 224×224</span>
+            </div>
+            <div class="frames" id="frames">
+              <div class="scan" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <div class="actions" id="actions">
+            <label class="consent"><input type="checkbox" id="consent"> I have the right to upload this clip</label>
+            <div class="action-btns">
+              <button class="btn btn-ghost" id="resetBtn" type="button">Change</button>
+              <button class="btn btn-primary" id="analyzeBtn" type="button" disabled>Analyse video</button>
+            </div>
+          </div>
+
+          <div class="progress" id="progress" hidden>
+            <div class="bar"><i id="barFill"></i></div>
+            <ol class="steps mono" id="steps">
+              <li data-step="upload">Uploading clip</li>
+              <li data-step="frames">Sampling frames → Xception</li>
+              <li data-step="audio">Extracting audio → MFCC → ResNet-18</li>
+              <li data-step="fuse">Late fusion → verdict</li>
+            </ol>
+            <p class="muted small" id="coldNote" hidden>The free server naps when idle — the first run can take up to a minute while it wakes.</p>
+          </div>
+
+          <div class="result" id="result" hidden>
+            <div class="gauge">
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <circle cx="60" cy="60" r="50" class="track"/>
+                <circle cx="60" cy="60" r="50" class="fill" id="gaugeFill"/>
+                <line id="thresholdTick" x1="103" y1="60" x2="117" y2="60" class="tick"/>
+              </svg>
+              <div class="gauge-num"><b id="probNum">0</b><span>% fake</span></div>
+            </div>
+            <div class="verdict">
+              <p class="mono muted small">Verdict</p>
+              <h3 id="verdictText">—</h3>
+              <p class="muted" id="verdictSub"></p>
+              <div class="chips">
+                <span class="chip" id="modeChip"></span>
+                <span class="chip" id="threshChip"></span>
+                <span class="chip" id="timeChip"></span>
+              </div>
+              <div class="result-btns">
+                <button class="btn btn-ghost small" id="againBtn" type="button">Analyse another</button>
+                <button class="btn btn-ghost small" id="jsonBtn" type="button">Copy JSON</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="error" id="error" hidden role="alert"></div>
+        </div>
+
+        <p class="fine">Research prototype — a probability, not proof. Clips are analysed on the VerifAI server and deleted straight after; only the file name and score are logged.</p>
+      </div>
+    </section>
+
+    <!-- ============ HOW IT WORKS ============ -->
+    <section class="section" id="how">
+      <div class="section-head">
+        <p class="eyebrow">How it works</p>
+        <h2>Two senses, one verdict</h2>
+        <p class="muted">Most deepfake detectors only look. VerifAI also listens — and if a clip has no usable audio it automatically falls back to a vision-only path.</p>
+      </div>
+
+      <div class="pipeline">
+        <div class="stage">
+          <span class="num mono">01</span>
+          <h4>Sample</h4>
+          <p>Five evenly spaced frames are pulled from the clip and resized to 224×224. The audio track is resampled to 16 kHz.</p>
+        </div>
+        <div class="stage split">
+          <span class="num mono">02</span>
+          <h4>Analyse</h4>
+          <div class="branch"><span class="tag v">Visual</span><p>Xception CNN scores each frame for face-swap and re-enactment artefacts.</p></div>
+          <div class="branch"><span class="tag a">Audio</span><p>40 MFCC coefficients → ResNet-18 scores the voice for synthesis artefacts.</p></div>
+        </div>
+        <div class="stage">
+          <span class="num mono">03</span>
+          <h4>Fuse</h4>
+          <p>A calibrated logistic-regression layer combines both probabilities (late fusion). No audio? The visual score is used on its own.</p>
+        </div>
+        <div class="stage">
+          <span class="num mono">04</span>
+          <h4>Decide</h4>
+          <p>The fake-probability is compared with a threshold tuned on validation data for balanced accuracy.</p>
+        </div>
+      </div>
+
+      <figure class="arch">
+        <svg viewBox="0 0 880 210" role="img" aria-label="Architecture: video frames go to Xception, audio goes to MFCC then ResNet-18, both probabilities go to a logistic fusion layer that outputs real or fake.">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10z" fill="#5B6782"/></marker>
+          </defs>
+          <g class="n"><rect x="10" y="80" width="130" height="50" rx="10"/><text x="75" y="110">Video clip</text></g>
+          <g class="n v"><rect x="200" y="20" width="150" height="50" rx="10"/><text x="275" y="50">5 frames · 224²</text></g>
+          <g class="n a"><rect x="200" y="140" width="150" height="50" rx="10"/><text x="275" y="170">Audio · MFCC 40</text></g>
+          <g class="n v"><rect x="410" y="20" width="150" height="50" rx="10"/><text x="485" y="50">Xception</text></g>
+          <g class="n a"><rect x="410" y="140" width="150" height="50" rx="10"/><text x="485" y="170">ResNet-18</text></g>
+          <g class="n f"><rect x="620" y="80" width="120" height="50" rx="10"/><text x="680" y="110">Fusion</text></g>
+          <g class="n out"><rect x="790" y="80" width="80" height="50" rx="10"/><text x="830" y="110">P(fake)</text></g>
+          <g class="e">
+            <path d="M140 95 C170 95 170 45 200 45"/><path d="M140 115 C170 115 170 165 200 165"/>
+            <path d="M350 45H410"/><path d="M350 165H410"/>
+            <path d="M560 45 C590 45 590 97 620 97"/><path d="M560 165 C590 165 590 113 620 113"/>
+            <path d="M740 105H790"/>
+          </g>
+          <text x="590" y="30" class="lbl">p_visual</text>
+          <text x="590" y="192" class="lbl">p_audio</text>
+        </svg>
+      </figure>
+    </section>
+
+    <!-- ============ RESULTS ============ -->
+    <section class="section" id="results">
+      <div class="section-head">
+        <p class="eyebrow">Results</p>
+        <h2>Measured, not promised</h2>
+        <p class="muted">Held-out test sets with subject-level splits (no identity overlap between train and test).</p>
+      </div>
+
+      <div class="metrics">
+        <div class="metric"><b>99.5%</b><span>Balanced accuracy</span><small>Hybrid AV · FakeAVCeleb · n = 2,115</small></div>
+        <div class="metric"><b>0.996</b><span>ROC-AUC</span><small>Hybrid AV · FakeAVCeleb</small></div>
+        <div class="metric"><b>0.977</b><span>ROC-AUC</span><small>Visual model · 3 datasets · n = 3,567</small></div>
+        <div class="metric"><b>1.000</b><span>ROC-AUC</span><small>Visual model · DeeperForensics</small></div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <caption class="mono">Visual model (Xception, trained on all datasets) — per test set</caption>
+          <thead><tr><th>Dataset</th><th>Samples</th><th>Balanced acc.</th><th>ROC-AUC</th></tr></thead>
+          <tbody>
+            <tr><td>DeeperForensics-1.0</td><td>740</td><td>98.7%</td><td>1.000</td></tr>
+            <tr><td>FakeAVCeleb v1.2</td><td>2,115</td><td>97.8%</td><td>0.991</td></tr>
+            <tr><td>FaceForensics++ (C23)</td><td>712</td><td class="warn">56.8%</td><td class="warn">0.588</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <h4>Known limitations</h4>
+        <ul>
+          <li>Heavily compressed footage (FaceForensics++ C23) remains hard for the visual branch.</li>
+          <li>Benchmark-trained detectors generalise poorly to in-the-wild recordings: in a cross-dataset test on authentic user videos, the FF++ baseline flagged most genuine clips as fake. Treat every score as a signal, not a verdict.</li>
+          <li>Trained on face-centric talking-head content; screen recordings, animations or clips without faces are out of distribution.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ============ PAPER ============ -->
+    <section class="section" id="paper">
+      <div class="section-head">
+        <p class="eyebrow">Paper &amp; code</p>
+        <h2>Open for scrutiny</h2>
+      </div>
+      <div class="paper-grid">
+        <div class="card paper">
+          <p class="mono muted small">Journal paper · in preparation</p>
+          <h3>VerifAI: A Multimodal Audio-Visual Framework for Deepfake Detection</h3>
+          <p class="muted">Giulio Dajani, Razia Sulthana Abdul Kareem</p>
+          <p>Trained and evaluated on FaceForensics++, Celeb-DF v2, DeeperForensics-1.0 and FakeAVCeleb v1.2. Winner of the Best Undergraduate Project award, University of Greenwich.</p>
+          <div class="paper-btns">
+            <a class="btn btn-primary" href="https://github.com/giuliolabs/VerifAI" target="_blank" rel="noopener">GitHub repository</a>
+            <a class="btn btn-ghost" id="apiDocs" href="#" target="_blank" rel="noopener">API docs</a>
+          </div>
+        </div>
+        <div class="card cite">
+          <div class="cite-head"><span class="mono muted small">Cite this software</span><button class="btn btn-ghost small" id="copyCite" type="button">Copy BibTeX</button></div>
+<pre id="bibtex">@software{dajani2026verifai,
+  author = {Dajani, Giulio},
+  title  = {{VerifAI}: Multimodal Deepfake Detection Framework},
+  year   = {2026},
+  url    = {https://github.com/giuliolabs/VerifAI},
+  note   = {Live demo: https://vrifai.com}
+}</pre>
+          <p class="muted small">Developers: <code>POST /api/predict</code> with a <code>file</code> field returns <code>{label, prob_fake, mode}</code>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div><img src="assets/mark.svg" alt="" width="20" height="20"> <span>© 2026 Giulio Labs · Built by <a href="https://github.com/giuliolabs" target="_blank" rel="noopener">Giulio Dajani</a></span></div>
+    <div class="muted small">Not for forensic, legal or journalistic decisions.</div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

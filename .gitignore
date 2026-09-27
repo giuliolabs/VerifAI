@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ﻿# Raw Data
 data/interim
 data/processed
@@ -25,31 +24,3 @@ Thumbs.db
 /experiments/results/ffpp_c23_vit_baseline/best_model.pt
 /experiments/results/ffpp_c23_temporal_mobilenetv2/best_model.pt
 /experiments/results/ffpp_c23_temporal_vit/best_model.pt
-=======
-﻿# Raw Data
-data/interim
-data/processed
-data/raw/Celeb-DF-v2
-data/raw/DeeperForensics
-data/raw/FaceForensics++_C23
-data/raw/FakeAVCeleb_v1.2
-data/raw/Survey369
-
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Virtual environments
-venv/
-.env
-
-# OS
-.DS_Store
-Thumbs.db
-
-/experiments/results/ffpp_c23_vit_baseline/best_model.pt
-/experiments/results/ffpp_c23_temporal_mobilenetv2/best_model.pt
-/experiments/results/ffpp_c23_temporal_vit/best_model.pt
->>>>>>> 85b15baa78e5a22959accd84de67e11f9d6837c9

@@ -47,6 +47,10 @@ from fastapi import FastAPI
 # Import StaticFiles to serve frontend assets such as logos or CSS
 from fastapi.staticfiles import StaticFiles
 
+# Import CORS middleware so the public website (vrifai.com) can call the API
+import os
+from fastapi.middleware.cors import CORSMiddleware
+
 # Import modular routers to maintain a clean service-oriented architecture
 from backend.app.api.detect import router as detect_router
 from backend.app.api import metadata
@@ -62,6 +66,32 @@ from backend.app.db.events import init_db
 app = FastAPI(
     title="VerifAI – Multimodal Deepfake Detection API",
     version="1.0",
+)
+
+
+# -----------------------------
+# CORS (allow the vrifai.com frontend to call this API from the browser)
+# -----------------------------
+
+# Comma-separated list of allowed origins; override with the
+# VERIFAI_ALLOWED_ORIGINS environment variable if the domain changes.
+_DEFAULT_ORIGINS = (
+    "https://vrifai.com,https://www.vrifai.com,"
+    "https://giuliolabs.github.io,"
+    "http://localhost:5500,http://127.0.0.1:5500,http://localhost:8080"
+)
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("VERIFAI_ALLOWED_ORIGINS", _DEFAULT_ORIGINS).split(",")
+    if origin.strip()
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+    max_age=86400,
 )
 
 
