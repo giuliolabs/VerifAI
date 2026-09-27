@@ -2,10 +2,9 @@
 
 ## Live Demo
 
-**Website:** https://vrifai.com  
-**API:** https://giuliolabs-verifai.hf.space ([Swagger docs](https://giuliolabs-verifai.hf.space/docs))
+**Website:** https://vrifai.com — runs entirely in your browser (ONNX Runtime Web); videos are never uploaded.
 
-> Hosted for free: the website on GitHub Pages (`website/`), the model API on Hugging Face Spaces (`deploy/`). See [DEPLOY.md](DEPLOY.md).
+> Hosted for free on GitHub Pages (`website/`). The in-browser models are ONNX exports of the final checkpoints (`scripts/export_onnx.py`). See [DEPLOY.md](DEPLOY.md).
 
 ---
 
@@ -162,9 +161,9 @@ The system automatically selects the appropriate model based on audio presence.
 
 ## Deployment
 
-- Hugging Face Spaces (Docker, free CPU tier) for the API  
-- GitHub Pages + custom domain (vrifai.com) for the website  
-- GitHub Actions: auto-deploy of the website and a keep-alive ping for the API  
+- In-browser inference: ONNX Runtime Web (WebAssembly), int8-compressed ONNX models  
+- GitHub Pages + custom domain (vrifai.com)  
+- FastAPI backend for local/API use  
 
 ---
 

@@ -1,0 +1,18 @@
+{
+  "features": [
+    "visual_prob",
+    "audio_prob"
+  ],
+  "coef": [
+    15.066381897445957,
+    -8.479507100339251
+  ],
+  "intercept": -1.8233514883623723,
+  "hybrid_threshold": 0.25,
+  "visual_only_threshold": 0.5,
+  "n_frames": 5,
+  "image_size": 224,
+  "n_mfcc": 40,
+  "mfcc_max_len": 200,
+  "sample_rate": 16000
+}

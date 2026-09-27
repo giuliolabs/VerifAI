@@ -116,8 +116,10 @@ h1 { font-size: clamp(42px, 6.4vw, 76px); line-height: 1.02; font-weight: 700; }
 .status i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .status[data-state="online"] { color: var(--real); }
 .status[data-state="online"] i { background: var(--real); box-shadow: 0 0 10px var(--real); }
-.status[data-state="waking"] i, .status[data-state="checking"] i { background: #F5B942; animation: pulse 1.2s infinite; }
-.status[data-state="waking"] { color: #F5B942; }
+.status[data-state="loading"] i { background: #F5B942; animation: pulse 1.2s infinite; }
+.status[data-state="loading"] { color: #F5B942; }
+.status[data-state="idle"] { color: #9FE8E0; }
+.status[data-state="idle"] i { background: var(--teal); }
 .status[data-state="offline"] { color: var(--fake); }
 .status[data-state="offline"] i { background: var(--fake); }
 @keyframes pulse { 50% { opacity: .3; } }

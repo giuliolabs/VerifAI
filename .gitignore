@@ -24,3 +24,4 @@ Thumbs.db
 /experiments/results/ffpp_c23_vit_baseline/best_model.pt
 /experiments/results/ffpp_c23_temporal_mobilenetv2/best_model.pt
 /experiments/results/ffpp_c23_temporal_vit/best_model.pt
+website/models/_fp32/
