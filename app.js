@@ -1,18 +1,15 @@
-/* VerifAI website — front-end for the VerifAI FastAPI backend
+/* VerifAI website — UI for the in-browser detection engine
  * © 2026 Giulio Labs
  */
 (() => {
   "use strict";
 
   const CFG = Object.assign(
-    { API_BASE: "", GITHUB_URL: "https://github.com/giuliolabs/VerifAI", MAX_UPLOAD_MB: 25 },
+    { MODEL_BASE: "models/", GITHUB_URL: "https://github.com/giuliolabs/VerifAI", MAX_FILE_MB: 100 },
     window.VERIFAI_CONFIG || {}
   );
-  const API = CFG.API_BASE.replace(/\/+$/, "");
-  const ALLOWED = [".mp4", ".mov", ".avi"];
+  const ALLOWED = [".mp4", ".mov", ".m4v", ".webm"];
   const N_FRAMES = 5;
-  // Decision thresholds used by the backend (see backend/app/services/inference_service.py)
-  const THRESHOLDS = { hybrid_av: 0.25, visual_only_fallback: 0.5 };
   const MODE_LABEL = { hybrid_av: "Audio + visual fusion", visual_only_fallback: "Visual only (no usable audio)" };
 
   const $ = (id) => document.getElementById(id);
@@ -20,56 +17,56 @@
     status: $("apiStatus"), drop: $("drop"), input: $("fileInput"), work: $("work"),
     preview: $("preview"), fileName: $("fileName"), fileSize: $("fileSize"), frames: $("frames"),
     actions: $("actions"), consent: $("consent"), analyze: $("analyzeBtn"), reset: $("resetBtn"),
-    progress: $("progress"), bar: $("barFill"), steps: $("steps"), cold: $("coldNote"),
+    progress: $("progress"), bar: $("barFill"), steps: $("steps"), cold: $("coldNote"), loadNote: $("loadNote"),
     result: $("result"), gauge: $("gaugeFill"), tick: $("thresholdTick"), probNum: $("probNum"),
     verdict: $("verdictText"), verdictSub: $("verdictSub"), mode: $("modeChip"), thresh: $("threshChip"),
     time: $("timeChip"), again: $("againBtn"), json: $("jsonBtn"), error: $("error"),
   };
 
-  let file = null, objectUrl = null, lastJson = null, apiOnline = false, busy = false;
+  let file = null, objectUrl = null, lastJson = null, busy = false, modelsReady = false;
 
-  /* ---------------- links ---------------- */
-  document.querySelectorAll('a[href^="https://github.com/giuliolabs/VerifAI"]').forEach((a) => (a.href = CFG.GITHUB_URL));
-  const docs = $("apiDocs");
-  if (docs) docs.href = API ? `${API}/docs` : CFG.GITHUB_URL;
+  document.querySelectorAll('a[href^="https://github.com/giuliolabs/VerifAI"]').forEach((a) => {
+    a.href = a.href.replace("https://github.com/giuliolabs/VerifAI", CFG.GITHUB_URL);
+  });
 
-  /* ---------------- server status ---------------- */
+  const engine = new window.VerifaiEngine({
+    modelBase: CFG.MODEL_BASE,
+    onProgress: (loaded, total) => {
+      const pct = total ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+      const txt = `${(loaded / 1e6).toFixed(1)} / ${(total / 1e6).toFixed(0)} MB`;
+      el.loadNote.textContent = `· ${txt}`;
+      if (!modelsReady) setStatus("loading", `Downloading model ${pct}%`);
+      if (busy) el.bar.style.width = `${Math.round(pct * 0.35)}%`;
+    },
+    onStatus: (t) => { if (!modelsReady) setStatus("loading", t); },
+  });
+
   function setStatus(state, text) {
     el.status.dataset.state = state;
     el.status.querySelector("span").textContent = text;
   }
 
-  async function ping(timeoutMs = 8000) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
-    try {
-      const r = await fetch(`${API}/api/health`, { signal: ctrl.signal, cache: "no-store" });
-      if (!r.ok) return false;
-      const j = await r.json().catch(() => ({}));
-      return j.status === "ok";
-    } catch { return false; } finally { clearTimeout(t); }
+  function capabilityCheck() {
+    const ok = typeof WebAssembly === "object" && "Worker" in window && window.OfflineAudioContext;
+    if (!ok) setStatus("offline", "Browser not supported");
+    return ok;
   }
 
-  async function watchServer() {
-    if (!API) { setStatus("offline", "API not configured"); return; }
-    setStatus("checking", "Checking server…");
-    const started = Date.now();
-    while (Date.now() - started < 4 * 60 * 1000) {
-      if (await ping()) { apiOnline = true; setStatus("online", "Model online"); return; }
-      setStatus("waking", "Waking server…");
-      await sleep(5000);
-    }
-    setStatus("offline", "Server unavailable");
+  // Warm the model download in the background once a file is chosen (or on idle for returning visitors)
+  function preload() {
+    if (!capabilityCheck()) return;
+    engine.load().then(() => { modelsReady = true; setStatus("online", "Model ready · on-device"); el.loadNote.textContent = ""; })
+      .catch((e) => { setStatus("offline", "Model failed to load"); console.error(e); });
   }
-
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  if ("caches" in window) {
+    caches.has("verifai-models-v1").then((has) => { if (has) preload(); }).catch(() => {});
+  }
 
   /* ---------------- file selection ---------------- */
   el.input.addEventListener("change", () => el.input.files[0] && pick(el.input.files[0]));
   ["dragenter", "dragover"].forEach((ev) => el.drop.addEventListener(ev, (e) => { e.preventDefault(); el.drop.classList.add("over"); }));
   ["dragleave", "drop"].forEach((ev) => el.drop.addEventListener(ev, (e) => { e.preventDefault(); el.drop.classList.remove("over"); }));
   el.drop.addEventListener("drop", (e) => e.dataTransfer.files[0] && pick(e.dataTransfer.files[0]));
-  // allow dropping anywhere on the detector while a file is loaded
   $("detector").addEventListener("dragover", (e) => e.preventDefault());
   $("detector").addEventListener("drop", (e) => { e.preventDefault(); if (!busy && e.dataTransfer.files[0]) pick(e.dataTransfer.files[0]); });
 
@@ -77,67 +74,42 @@
     const ext = (f.name.match(/\.[^.]+$/) || [""])[0].toLowerCase();
     el.preview.parentElement.hidden = false; el.frames.parentElement.hidden = false;
     resetView();
-    if (!ALLOWED.includes(ext)) return showError(`Unsupported file type (${ext || "unknown"}). Please use MP4, MOV or AVI.`, true);
-    if (f.size > CFG.MAX_UPLOAD_MB * 1024 * 1024) return showError(`That file is ${fmtSize(f.size)} — the limit is ${CFG.MAX_UPLOAD_MB} MB. Trim the clip and try again.`, true);
+    if (ext === ".avi") return showError("AVI files can't be decoded by web browsers. Convert the clip to MP4 (H.264) and try again.", true);
+    if (!ALLOWED.includes(ext)) return showError(`Unsupported file type (${ext || "unknown"}). Please use MP4, MOV or WebM.`, true);
+    if (f.size > CFG.MAX_FILE_MB * 1024 * 1024) return showError(`That file is ${fmtSize(f.size)} — the limit is ${CFG.MAX_FILE_MB} MB. Trim the clip and try again.`, true);
 
     file = f;
-    el.drop.hidden = true;
-    el.work.hidden = false;
-    el.fileName.textContent = f.name;
-    el.fileSize.textContent = fmtSize(f.size);
+    el.drop.hidden = true; el.work.hidden = false;
+    el.fileName.textContent = f.name; el.fileSize.textContent = fmtSize(f.size);
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = URL.createObjectURL(f);
     el.preview.src = objectUrl;
     renderFramePlaceholders();
     const token = objectUrl;
-    extractFrames(objectUrl).catch(() => {
-      if (token !== objectUrl) return;
-      // Browser can't decode this codec locally — the server still can.
-      el.frames.querySelectorAll(".ph").forEach((p) => (p.style.animation = "none"));
-      el.frames.parentElement.querySelector(".frames-label span").textContent =
-        "Preview unavailable in this browser — the server will still sample 5 frames";
-    });
-    el.frames.parentElement.querySelector(".frames-label span").textContent = "What the model sees · 5 frames @ 224×224";
+    engine.extractFrames(objectUrl, (i, c) => { if (token === objectUrl) placeFrame(i, c); })
+      .catch(() => {
+        if (token !== objectUrl) return;
+        el.frames.querySelectorAll(".ph").forEach((p) => (p.style.animation = "none"));
+        setFramesLabel("This browser can't decode this video — try an MP4 (H.264) or WebM file");
+      });
+    setFramesLabel("What the model sees · 5 frames @ 224×224");
     updateAnalyzeBtn();
+    if (!modelsReady) preload();
   }
 
-  function fmtSize(b) { return b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`; }
+  const fmtSize = (b) => (b > 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
+  const setFramesLabel = (t) => (el.frames.parentElement.querySelector(".frames-label span").textContent = t);
 
   function renderFramePlaceholders() {
     el.frames.querySelectorAll("canvas,.ph").forEach((n) => n.remove());
     for (let i = 0; i < N_FRAMES; i++) {
-      const ph = document.createElement("div"); ph.className = "ph";
+      const ph = document.createElement("div"); ph.className = "ph"; ph.dataset.i = i;
       el.frames.appendChild(ph);
     }
   }
-
-  // Mirrors the backend: np.linspace(0, total-1, 5) frame positions, resized to 224x224
-  async function extractFrames(url) {
-    const v = document.createElement("video");
-    v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
-    await once(v, "loadeddata", 10000);
-    const dur = v.duration;
-    if (!isFinite(dur) || dur <= 0) throw new Error("no duration");
-    const phs = [...el.frames.querySelectorAll(".ph")];
-    for (let i = 0; i < N_FRAMES; i++) {
-      const t = Math.min(dur - 0.05, (dur * i) / (N_FRAMES - 1));
-      v.currentTime = Math.max(0, t);
-      await once(v, "seeked", 5000);
-      const c = document.createElement("canvas");
-      c.width = 224; c.height = 224;
-      c.getContext("2d").drawImage(v, 0, 0, 224, 224);
-      c.title = `t = ${t.toFixed(2)} s`;
-      phs[i].replaceWith(c);
-    }
-    v.removeAttribute("src"); v.load();
-  }
-
-  function once(target, ev, timeout) {
-    return new Promise((res, rej) => {
-      const t = setTimeout(() => { target.removeEventListener(ev, h); rej(new Error("timeout")); }, timeout);
-      const h = () => { clearTimeout(t); res(); };
-      target.addEventListener(ev, h, { once: true });
-    });
+  function placeFrame(i, canvas) {
+    const slot = el.frames.querySelector(`[data-i="${i}"]`);
+    if (slot) { canvas.dataset.i = i; slot.replaceWith(canvas); }
   }
 
   el.consent.addEventListener("change", updateAnalyzeBtn);
@@ -163,45 +135,38 @@
   /* ---------------- analysis ---------------- */
   el.analyze.addEventListener("click", analyse);
 
+  const STAGE_PCT = { load: 2, frames: 38, mfcc: 48, visual: 58, audio: 88, fuse: 96 };
   function setStep(name) {
     let passed = true;
     el.steps.querySelectorAll("li").forEach((li) => {
       if (li.dataset.step === name) { li.className = "active"; passed = false; }
       else li.className = passed ? "done" : "";
     });
+    if (name !== "load" || modelsReady) el.bar.style.width = `${STAGE_PCT[name] || 0}%`;
   }
 
   async function analyse() {
     if (!file || busy) return;
     busy = true; updateAnalyzeBtn();
     el.error.hidden = true; el.actions.hidden = true; el.progress.hidden = false;
-    el.cold.hidden = apiOnline;
+    el.cold.hidden = modelsReady;
     el.bar.style.width = "0%";
-    setStep("upload");
     const t0 = performance.now();
-
-    let stepTimer = null;
     try {
-      const data = await upload(file, (p) => {
-        el.bar.style.width = `${Math.round(p * 55)}%`;
-        if (p >= 1 && !stepTimer) {
-          el.frames.classList.add("scanning");
-          const seq = ["frames", "audio", "fuse"]; let i = 0; let w = 55;
-          setStep(seq[0]);
-          stepTimer = setInterval(() => {
-            i = Math.min(i + 1, seq.length - 1); setStep(seq[i]);
-            w = Math.min(w + 12, 92); el.bar.style.width = `${w}%`;
-          }, 1800);
-        }
+      const r = await engine.analyse(file, {
+        onStage: (s) => {
+          setStep(s);
+          if (s === "frames") { modelsReady = true; setStatus("online", "Model ready · on-device"); el.cold.hidden = true; }
+          if (s === "visual") el.frames.classList.add("scanning");
+        },
+        onFrame: (i, c) => placeFrame(i, c),
       });
-      clearInterval(stepTimer);
       el.bar.style.width = "100%";
       el.steps.querySelectorAll("li").forEach((li) => (li.className = "done"));
-      apiOnline = true; setStatus("online", "Model online");
-      await sleep(250);
-      showResult(data, (performance.now() - t0) / 1000);
+      await new Promise((res) => setTimeout(res, 200));
+      showResult(r, (performance.now() - t0) / 1000);
     } catch (err) {
-      clearInterval(stepTimer);
+      console.error(err);
       el.progress.hidden = true; el.actions.hidden = false;
       showError(err.message || "Something went wrong. Please try again.");
     } finally {
@@ -210,44 +175,13 @@
     }
   }
 
-  function upload(f, onProgress, attempt = 0) {
-    return new Promise((resolve, reject) => {
-      if (!API) return reject(new Error("The API URL is not configured (see config.js)."));
-      const fd = new FormData(); fd.append("file", f, f.name);
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", `${API}/api/predict`);
-      xhr.timeout = 180000;
-      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
-      xhr.upload.onload = () => onProgress(1);
-      xhr.onload = () => {
-        let body = null; try { body = JSON.parse(xhr.responseText); } catch {}
-        if (xhr.status >= 200 && xhr.status < 300 && body && body.label) return resolve(body);
-        // cold start: HF returns 502/503 while the container boots
-        if ([502, 503, 504].includes(xhr.status) && attempt < 8) {
-          setStatus("waking", "Waking server…"); el.cold.hidden = false;
-          return sleep(8000).then(() => upload(f, onProgress, attempt + 1)).then(resolve, reject);
-        }
-        const detail = body && (typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail));
-        reject(new Error(detail || `Server returned ${xhr.status}.`));
-      };
-      xhr.onerror = () => {
-        if (attempt < 8) {
-          setStatus("waking", "Waking server…"); el.cold.hidden = false;
-          return sleep(8000).then(() => upload(f, onProgress, attempt + 1)).then(resolve, reject);
-        }
-        setStatus("offline", "Server unavailable");
-        reject(new Error("Couldn't reach the VerifAI server. It may be restarting — please try again in a minute."));
-      };
-      xhr.ontimeout = () => reject(new Error("The analysis timed out. Try a shorter clip."));
-      xhr.send(fd);
-    });
-  }
-
-  function showResult(data, secs) {
-    lastJson = data;
-    const p = Math.max(0, Math.min(1, parseFloat(String(data.prob_fake).replace("%", "")) / 100 || 0));
-    const fake = data.label === "fake";
-    const thr = THRESHOLDS[data.mode] ?? 0.5;
+  function showResult(r, secs) {
+    const p = r.prob, fake = r.label === "fake", thr = r.threshold;
+    lastJson = {
+      label: r.label, prob_fake: `${(p * 100).toFixed(2)}%`, mode: r.mode,
+      ...(r.mode === "hybrid_av" ? { p_visual: +r.pVisual.toFixed(4), p_audio: +r.pAudio.toFixed(4) } : {}),
+      threshold: thr, runtime: "onnxruntime-web (wasm)", file: file ? file.name : undefined,
+    };
 
     el.progress.hidden = true; el.result.hidden = false;
     el.gauge.style.stroke = fake ? "var(--fake)" : "var(--real)";
@@ -257,17 +191,15 @@
 
     el.verdict.textContent = fake ? "Likely manipulated" : "Likely authentic";
     el.verdict.className = fake ? "fake" : "real";
-    const conf = fake ? p : 1 - p;
-    const strength = Math.abs(p - thr) > 0.3 ? "strong" : Math.abs(p - thr) > 0.12 ? "moderate" : "weak";
+    const gap = Math.abs(p - thr);
+    const strength = gap > 0.3 ? "strong" : gap > 0.12 ? "moderate" : "weak";
     el.verdictSub.textContent = fake
       ? `The model found ${strength} evidence of manipulation.`
       : `No ${strength === "strong" ? "" : "clear "}signs of manipulation were found.`;
     if (strength === "weak") el.verdictSub.textContent += " The score is close to the threshold — treat with caution.";
-    el.mode.textContent = MODE_LABEL[data.mode] || data.mode;
+    el.mode.textContent = MODE_LABEL[r.mode] || r.mode;
     el.thresh.textContent = `threshold ${Math.round(thr * 100)}%`;
-    el.time.textContent = `${secs.toFixed(1)} s`;
-    el.result.dataset.conf = conf.toFixed(3);
-    el.actions.hidden = true;
+    el.time.textContent = `${secs.toFixed(1)} s on this device`;
   }
 
   function countUp(node, target) {
@@ -282,7 +214,6 @@
 
   function showError(msg, standalone) {
     if (standalone) { el.work.hidden = false; el.drop.hidden = false; el.preview.parentElement.hidden = true; el.frames.parentElement.hidden = true; el.actions.hidden = true; }
-    else { el.preview.parentElement.hidden = false; el.frames.parentElement.hidden = false; }
     el.error.textContent = msg; el.error.hidden = false;
   }
 
@@ -297,5 +228,6 @@
   el.json.addEventListener("click", () => lastJson && copy(JSON.stringify(lastJson, null, 2), el.json));
   $("copyCite").addEventListener("click", (e) => copy($("bibtex").textContent, e.currentTarget));
 
-  watchServer();
+  // expose for automated parity tests
+  window.__verifai = { engine };
 })();
