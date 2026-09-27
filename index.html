@@ -259,17 +259,30 @@
           <p>Trained and evaluated on FaceForensics++, Celeb-DF v2, DeeperForensics-1.0 and FakeAVCeleb v1.2. Winner of the Best Undergraduate Project award, University of Greenwich.</p>
           <div class="paper-btns">
             <a class="btn btn-primary" href="https://github.com/giuliolabs/VerifAI" target="_blank" rel="noopener">GitHub repository</a>
+            <a class="btn btn-ghost" href="https://doi.org/10.5281/zenodo.22997514" target="_blank" rel="noopener">Model weights (Zenodo)</a>
             <a class="btn btn-ghost" href="https://github.com/giuliolabs/VerifAI/blob/main/scripts/export_onnx.py" target="_blank" rel="noopener">How the web models are built</a>
           </div>
+          <p class="muted small doi-line">Trained weights, test reports and checksums: <a href="https://doi.org/10.5281/zenodo.22997514" target="_blank" rel="noopener"><code>doi:10.5281/zenodo.22997514</code></a> · CC BY-NC 4.0</p>
+
         </div>
         <div class="card cite">
-          <div class="cite-head"><span class="mono muted small">Cite this software</span><button class="btn btn-ghost small" id="copyCite" type="button">Copy BibTeX</button></div>
+          <div class="cite-head"><span class="mono muted small">Cite the software &amp; weights</span><button class="btn btn-ghost small" id="copyCite" type="button">Copy BibTeX</button></div>
 <pre id="bibtex">@software{dajani2026verifai,
   author = {Dajani, Giulio},
   title  = {{VerifAI}: Multimodal Deepfake Detection Framework},
   year   = {2026},
   url    = {https://github.com/giuliolabs/VerifAI},
   note   = {Live demo: https://vrifai.com}
+}
+
+@dataset{dajani2026verifaiweights,
+  author    = {Dajani, Giulio and Abdul Kareem, Razia Sulthana},
+  title     = {{VerifAI}: trained model weights for multimodal deepfake detection},
+  year      = {2026},
+  publisher = {Zenodo},
+  version   = {1.0},
+  doi       = {10.5281/zenodo.22997514},
+  url       = {https://doi.org/10.5281/zenodo.22997514}
 }</pre>
           <p class="muted small">The browser runs int8-compressed ONNX exports of the same checkpoints as the Python API (<code>backend/</code>); <code>scripts/check_onnx_parity.py</code> compares the two.</p>
         </div>

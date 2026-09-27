@@ -275,3 +275,5 @@ code { font-family: var(--mono); font-size: .92em; color: #BFEFE9; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }
 }
+.doi-line { margin: 14px 0 0 !important; }
+.doi-line a { text-decoration: none; }
